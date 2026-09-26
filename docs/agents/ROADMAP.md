@@ -598,11 +598,19 @@ below.
   changes or the window is hidden, and the periodic app timers (save-state
   label, autosave) arm only when they have work — an idle Hew costs the
   machine nothing
-- A labeled tool rail, a command palette (Ctrl/Cmd-K) for finding any tool
+- A labeled tool rail, a command palette (Ctrl/Cmd-/) for finding any tool
   or action by name, a contextual action dock that follows the current
   selection (including Group for a multi-selection and Make Component for
   objects and groups, shown only when the selection qualifies), and a
   docked properties/outliner/materials tray
+- Room to model on demand: the tool rail compacts to icons (View ▸ Compact
+  Tool Rail, or its chevron), the tray hides entirely (View ▸ Tray, or its
+  chevron), and the contextual dock can be turned off (View ▸ Contextual
+  Dock). No keyboard shortcuts, by design. Each open window keeps its own
+  layout; the last one set is what a new window or the next launch starts
+  with. A section asked for while the tray is hidden brings the tray back with
+  that section open, and a field mid-edit inside a closing section or tray
+  commits first
 - One-gesture object interaction: with an empty selection, Move / Rotate /
   Scale act on whatever the first click lands on; the Select tool drags
   objects directly (a threshold-gated one-shot Move — full snapping, axis

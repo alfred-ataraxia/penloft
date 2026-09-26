@@ -187,6 +187,7 @@ describe('MenuBar', () => {
     canExplode: true,
     canMakeUnique: true,
     canBoolean: true,
+    canSaveSelectionToLibrary: true,
   }
 
   it('dispatches every object command id through onEditAction when its gate is open', () => {
@@ -199,6 +200,7 @@ describe('MenuBar', () => {
       ['Place Copy', 'edit-place-copy'],
       ['Explode', 'edit-explode'],
       ['Make Unique', 'edit-make-unique'],
+      ['Save Selection to Library…', 'save-to-library'],
       ['Union', 'edit-union'],
       ['Subtract', 'edit-subtract'],
       ['Intersect', 'edit-intersect'],
@@ -223,6 +225,15 @@ describe('MenuBar', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /^object$/i }))
     fireEvent.mouseDown(screen.getByText('Group'))
+    expect(onEditAction).not.toHaveBeenCalled()
+  })
+
+  it('Save Selection to Library… stays disabled when the gate is omitted', () => {
+    const onEditAction = vi.fn()
+    const { canSaveSelectionToLibrary: _omitted, ...gates } = openGates
+    render(<MenuBar {...defaultProps} editGates={gates} onEditAction={onEditAction} />)
+    fireEvent.click(screen.getByRole('button', { name: /^object$/i }))
+    fireEvent.mouseDown(screen.getByText('Save Selection to Library…'))
     expect(onEditAction).not.toHaveBeenCalled()
   })
 

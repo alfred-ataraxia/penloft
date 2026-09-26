@@ -437,7 +437,7 @@ export function ComponentsPanel({
   )
 }
 
-const HOVER_BG = 'var(--surface-hover, rgba(255,255,255,0.08))'
+const HOVER_BG = 'var(--surface-hover)'
 
 /** Section-header "Purge Unused…" control — mirrors ScenesPanel's
  * ScenesAddButton binding shape (a small button passed through

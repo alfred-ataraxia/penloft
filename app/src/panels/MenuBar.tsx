@@ -112,6 +112,18 @@ export interface MenuBarProps {
   showChanges?: boolean
   /** Whether the Object Info pane is visible. */
   showObjectInfo?: boolean
+  /** Whether the right-hand tray is shown (View ▸ Tray). */
+  showTray?: boolean
+  /** Show or hide the whole tray. */
+  onToggleTray?: () => void
+  /** Whether the tool rail is compacted to icons (View ▸ Compact Tool Rail). */
+  compactRail?: boolean
+  /** Compact the tool rail to icons, or bring its names back. */
+  onToggleCompactRail?: () => void
+  /** Whether the contextual dock is shown (View ▸ Contextual Dock). */
+  showDock?: boolean
+  /** Turn the contextual dock off or back on. */
+  onToggleDock?: () => void
   /** Whether the Debug Log panel is visible. */
   showDebugLog?: boolean
   /** Whether the Library browser dialog is open. */
@@ -181,6 +193,10 @@ export interface MenuBarProps {
     canExplode: boolean
     canMakeUnique: boolean
     canBoolean: boolean
+    /** One object, group, or instance selected, with a library backend —
+     *  Object ▸ Save Selection to Library… (also the dock's verb). Defaults
+     *  to disabled when omitted. */
+    canSaveSelectionToLibrary?: boolean
     /** False while an explode session is open (`ExplodeSessionScope`) —
      *  importing restructures the document, which a session can't fold
      *  back cleanly. Defaults to enabled (`true`) when omitted so callers
@@ -628,6 +644,12 @@ export function MenuBar({
   showScenes = false,
   showChanges = false,
   showObjectInfo = false,
+  showTray = true,
+  onToggleTray,
+  compactRail = false,
+  onToggleCompactRail,
+  showDock = true,
+  onToggleDock,
   showDebugLog = false,
   showLibrary = false,
   onToggleModelInfo,
@@ -930,6 +952,11 @@ export function MenuBar({
               disabled={!(editGates?.canExplode ?? false)}
               onClick={withClose(() => onEditAction?.('edit-explode'))}
             />
+            <MenuItem
+              label="Save Selection to Library…"
+              disabled={!(editGates?.canSaveSelectionToLibrary ?? false)}
+              onClick={withClose(() => onEditAction?.('save-to-library'))}
+            />
             <div style={SEPARATOR_STYLE} />
             <MenuItem
               label="Union"
@@ -988,7 +1015,27 @@ export function MenuBar({
             {/* Panel toggles — HIG puts show/hide of interface panels in the
                 View menu (Window holds actual windows). The Scenes panel
                 lives inside the Scenes submenu below, keeping that whole
-                feature in one place. */}
+                feature in one place. The window's chrome comes first — the
+                tool rail, the tray that frames the sections below, and the
+                contextual dock. None takes an accelerator: they're
+                set-and-forget layout choices, and SketchUp reserves no key
+                for its trays either. */}
+            <CheckMenuItem
+              label="Compact Tool Rail"
+              checked={compactRail}
+              onClick={withClose(() => onToggleCompactRail?.())}
+            />
+            <CheckMenuItem
+              label="Tray"
+              checked={showTray}
+              onClick={withClose(() => onToggleTray?.())}
+            />
+            <CheckMenuItem
+              label="Contextual Dock"
+              checked={showDock}
+              onClick={withClose(() => onToggleDock?.())}
+            />
+            <div style={SEPARATOR_STYLE} />
             <CheckMenuItem
               label="Model Info"
               shortcut={`⇧${mod}I`}

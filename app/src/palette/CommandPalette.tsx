@@ -13,6 +13,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { TOOL_ICON_SVG } from '../tools/toolIcons'
+import { InlineIcon } from '../panels/InlineIcon'
 import boltSvg from '@material-symbols/svg-400/outlined/bolt.svg?raw'
 import { paletteEntries, paletteShortcut, type PaletteEntry, type PaletteGate, type PaletteGroup } from './registry'
 import { rankEntries } from './search'
@@ -40,17 +41,7 @@ const GROUP_ORDER: PaletteGroup[] = ['Tools', 'Actions', 'Model', 'Library']
 
 function RowIcon({ entry }: { entry: PaletteEntry }) {
   const raw = entry.group === 'Tools' ? TOOL_ICON_SVG[entry.label as keyof typeof TOOL_ICON_SVG] : boltSvg
-  const svg = (raw ?? boltSvg)
-    .replace(/\swidth="[^"]*"/, '')
-    .replace(/\sheight="[^"]*"/, '')
-    .replace('<svg ', '<svg fill="currentColor" width="17" height="17" ')
-  return (
-    <span
-      aria-hidden="true"
-      style={{ width: '17px', height: '17px', display: 'block', overflow: 'hidden', flexShrink: 0 }}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
-  )
+  return <InlineIcon svg={raw ?? boltSvg} size={17} />
 }
 
 export function CommandPalette({ open, onClose, onRun, extraEntries, gates, initialQuery }: CommandPaletteProps) {

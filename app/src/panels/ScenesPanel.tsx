@@ -33,7 +33,7 @@ export interface ScenesPanelProps {
 }
 
 const ROW_HEIGHT = 30
-const HOVER_BG = 'rgba(255,255,255,0.04)'
+const HOVER_BG = 'var(--surface-hover)'
 
 /**
  * Inline-rename UI state (SPEC.md §1 "Name" + "Add flow"), shared between

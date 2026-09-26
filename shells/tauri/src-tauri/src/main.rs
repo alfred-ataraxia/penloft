@@ -2919,6 +2919,18 @@ fn main() {
             )?;
             let edit_explode =
                 gated_item(handle, &mut gated, "edit-explode", "Explode", None, None)?;
+            // The contextual dock's Save to Library verb, here too so it
+            // stays reachable with the dock turned off (View ▸ Contextual
+            // Dock). Distinct from File ▸ Save to Library…, which saves the
+            // whole document.
+            let edit_save_selection_to_library = gated_item(
+                handle,
+                &mut gated,
+                "edit-save-selection-to-library",
+                "Save Selection to Library…",
+                None,
+                None,
+            )?;
             let edit_make_unique = gated_item(
                 handle,
                 &mut gated,
@@ -2944,6 +2956,7 @@ fn main() {
                 &edit_make_component,
                 &edit_place_copy,
                 &edit_explode,
+                &edit_save_selection_to_library,
                 &edit_make_unique,
                 &edit_union,
                 &edit_subtract,
@@ -2989,6 +3002,7 @@ fn main() {
                 .item(&edit_make_unique)
                 .item(&edit_place_copy)
                 .item(&edit_explode)
+                .item(&edit_save_selection_to_library)
                 .separator()
                 .item(&edit_union)
                 .item(&edit_subtract)
@@ -3039,6 +3053,29 @@ fn main() {
                 Some("CmdOrCtrl+/"),
             )
             .build(handle)?;
+
+            // The window's chrome — the tool rail's icons-only mode, the
+            // whole right-hand tray, and the contextual dock — ahead of the
+            // tray's own sections. No accelerators: these are
+            // set-and-forget layout choices, not worth a reserved chord
+            // (SketchUp keeps none for its trays either).
+            let view_compact_rail = check_item(
+                handle,
+                &mut checks,
+                "view-compact-rail",
+                "Compact Tool Rail",
+                None,
+                None,
+            )?;
+            let view_tray = check_item(handle, &mut checks, "view-tray", "Tray", None, None)?;
+            let view_dock = check_item(
+                handle,
+                &mut checks,
+                "view-dock",
+                "Contextual Dock",
+                None,
+                None,
+            )?;
 
             // Panel toggles — HIG puts show/hide of interface panels in the
             // View menu (Window holds actual windows). Ids keep their
@@ -3159,6 +3196,10 @@ fn main() {
                 .item(&view_grid)
                 .item(&view_guides)
                 .item(&view_section_plane)
+                .item(&PredefinedMenuItem::separator(handle)?)
+                .item(&view_compact_rail)
+                .item(&view_tray)
+                .item(&view_dock)
                 .item(&PredefinedMenuItem::separator(handle)?)
                 .item(&win_model_info)
                 .item(&win_object_info)
@@ -3909,6 +3950,7 @@ fn main() {
                 "edit-ungroup" => "edit-ungroup",
                 "edit-make-component" => "edit-make-component",
                 "edit-place-copy" => "edit-place-copy",
+                "edit-save-selection-to-library" => "save-to-library",
                 "edit-explode" => "edit-explode",
                 "edit-make-unique" => "edit-make-unique",
                 "edit-union" => "edit-union",
@@ -3964,6 +4006,9 @@ fn main() {
                 "cam-view-left" => "view-left",
                 "cam-view-right" => "view-right",
                 "cam-view-iso" => "view-iso",
+                "view-compact-rail" => "toggle-compact-rail",
+                "view-tray" => "toggle-tray",
+                "view-dock" => "toggle-dock",
                 "win-model-info" => "toggle-model-info",
                 "win-materials" => "toggle-materials",
                 "win-components" => "toggle-components",

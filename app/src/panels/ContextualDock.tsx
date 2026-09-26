@@ -21,6 +21,7 @@
 
 import { useState } from 'react'
 import { TOOL_ICON_SVG, type ToolName } from '../tools/toolIcons'
+import { InlineIcon } from './InlineIcon'
 import inkEraserSvg from '@material-symbols/svg-400/outlined/ink_eraser.svg?raw'
 import editSvg from '@material-symbols/svg-400/outlined/edit.svg?raw'
 import groupOffSvg from '@material-symbols/svg-400/outlined/group_off.svg?raw'
@@ -57,17 +58,7 @@ const CHIP_COLOR: Record<DockContext, string> = {
 function VerbIcon({ verb }: { verb: DockVerb }) {
   const raw = TOOL_ICON_SVG[verb.label as ToolName] ?? NON_TOOL_ICON_SVG[verb.id]
   if (raw === undefined) return null
-  const svg = raw
-    .replace(/\swidth="[^"]*"/, '')
-    .replace(/\sheight="[^"]*"/, '')
-    .replace('<svg ', '<svg fill="currentColor" width="21" height="21" ')
-  return (
-    <span
-      aria-hidden="true"
-      style={{ width: '21px', height: '21px', display: 'block', overflow: 'hidden' }}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
-  )
+  return <InlineIcon svg={raw} size={21} />
 }
 
 /**
@@ -101,7 +92,7 @@ function DockItem({ verb, selected, disabled, onRun }: { verb: DockVerb; selecte
         minWidth: '60px',
         border: selected ? '1px solid var(--accent-border)' : '1px solid transparent',
         borderRadius: 'var(--radius-panel-item, 11px)',
-        background: selected ? 'var(--accent-tint-18)' : hovered && !isDisabled ? 'rgba(255,255,255,0.04)' : 'transparent',
+        background: selected ? 'var(--accent-tint-18)' : hovered && !isDisabled ? 'var(--surface-hover)' : 'transparent',
         color: selected ? 'var(--accent-text-strong)' : 'var(--text-secondary)',
         opacity: isDisabled ? 0.4 : 1,
         pointerEvents: isDisabled ? 'none' : undefined,

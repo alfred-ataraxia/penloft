@@ -355,3 +355,58 @@ describe('Copy/Cut/Paste/Paste In Place menu parity', () => {
     expect(byId.get('edit-paste-in-place')?.gate).toBe('clipboardHasContent')
   })
 })
+
+/**
+ * View ▸ Compact Tool Rail, Tray, and Contextual Dock: checkable items like
+ * the pane toggles, placed ahead of them, with no accelerators (layout
+ * choices, not worth a reserved chord), and check marks pushed through
+ * sync_menu_state by App.tsx.
+ */
+describe('Compact Tool Rail / Tray / Contextual Dock menu items parity', () => {
+  const source = readFileSync(MAIN_RS, 'utf8')
+  const menuBarSource = readFileSync(MENU_BAR_TSX, 'utf8')
+  const appSource = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), './App.tsx'), 'utf8')
+
+  it.each([
+    ['view-compact-rail', 'toggle-compact-rail'],
+    ['view-tray', 'toggle-tray'],
+    ['view-dock', 'toggle-dock'],
+  ])('%s is built via check_item, attached to a submenu, dispatches to %s, and is synced', (id, action) => {
+    const binding = new RegExp(`let\\s+(\\w+)\\s*=\\s*check_item\\([^;]*?"${id}"`, 's').exec(source)
+    expect(binding, `no check_item binding found for ${id}`).not.toBeNull()
+    const variable = (binding as RegExpExecArray)[1]
+    expect(source.includes(`.item(&${variable})`), `${id} is built but never attached to a SubmenuBuilder chain`).toBe(true)
+    expect(new RegExp(`"${id}"\\s*=>\\s*"${action}"`).test(source), `${id} has no dispatch arm to ${action}`).toBe(true)
+    expect(appSource.includes(`'${id}':`), `App.tsx never pushes ${id}'s check mark through sync_menu_state`).toBe(true)
+  })
+
+  it.each(['view-compact-rail', 'view-tray', 'view-dock'])('%s takes no accelerator', (id) => {
+    expect(new RegExp(`check_item\\([^;]*?"${id}",[^;]*?None,\\s*None,?\\s*\\)`, 's').test(source)).toBe(true)
+  })
+
+  it('is offered from the web MenuBar', () => {
+    expect(menuBarSource.includes('label="Compact Tool Rail"')).toBe(true)
+    expect(menuBarSource.includes('label="Tray"')).toBe(true)
+    expect(menuBarSource.includes('label="Contextual Dock"')).toBe(true)
+  })
+})
+
+/**
+ * Object ▸ Save Selection to Library…: the contextual dock's Save to Library
+ * verb, mirrored into the menus so it stays reachable with the dock turned
+ * off. A gated plain item like Make Component, enabled through
+ * sync_menu_state.
+ */
+describe('Save Selection to Library menu item parity', () => {
+  const source = readFileSync(MAIN_RS, 'utf8')
+  const appSource = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), './App.tsx'), 'utf8')
+
+  it('is built via gated_item, attached to a submenu, dispatches to save-to-library, and is gated', () => {
+    const binding = new RegExp(`let\\s+(\\w+)\\s*=\\s*gated_item\\([^;]*?"edit-save-selection-to-library"`, 's').exec(source)
+    expect(binding, 'no gated_item binding found for edit-save-selection-to-library').not.toBeNull()
+    const variable = (binding as RegExpExecArray)[1]
+    expect(source.includes(`.item(&${variable})`)).toBe(true)
+    expect(/"edit-save-selection-to-library"\s*=>\s*"save-to-library"/.test(source)).toBe(true)
+    expect(appSource.includes("'edit-save-selection-to-library':")).toBe(true)
+  })
+})

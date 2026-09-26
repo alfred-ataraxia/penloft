@@ -245,6 +245,9 @@ describe('App — File ▸ Open onto a non-pristine window (Tauri)', () => {
     triggerOpen()
     expect(await screen.findByText('my-house.hew')).toBeInTheDocument()
     expect(mockScene.load).toHaveBeenCalledTimes(1)
+    // Let the docSessionRef mirror catch up before the next gesture — see
+    // makeNonPristine below on why the title rendering isn't enough.
+    await act(async () => {})
 
     // A further Open, now that the window holds a named file, must route
     // into a new window instead of replacing this one.
@@ -292,6 +295,7 @@ describe('App — File ▸ Open onto a non-pristine window (Tauri)', () => {
     })
     triggerOpen()
     expect(await screen.findByText('my-house.hew')).toBeInTheDocument()
+    await act(async () => {}) // docSessionRef mirror; see makeNonPristine
 
     openAnyMock.mockResolvedValueOnce({
       kind: 'stl',

@@ -1,24 +1,45 @@
 /**
- * The tray's put-away control and its way back. Open, the chevron sits in a
- * thin row at the top of the tray, left-aligned to mirror the rail's. Put
- * away, the tray is gone entirely, so the way back is a tab floating on the
- * viewport's right edge, vertically centered to stay clear of the ViewCube
- * and the measurement box.
+ * The tray's hide control and its way back. Shown, the chevron sits in a thin
+ * row at the top of the tray, left-aligned to mirror the rail's. Hidden, the
+ * tray is gone entirely, so the way back is a tab floating on the viewport's
+ * right edge, vertically centered to stay clear of the measurement box (top
+ * right) and the contextual dock (bottom center).
+ *
+ * Both take `focusOnMount`: when the tray is hidden or shown from a control
+ * that had keyboard focus, focus follows to the control that replaced it
+ * instead of falling back to the document body.
  */
-import { useState } from 'react'
-import { InlineIcon } from './ToolRail'
+import { useEffect, useRef, useState } from 'react'
+import { InlineIcon } from './InlineIcon'
 import chevronLeftSvg from '@material-symbols/svg-400/outlined/chevron_left.svg?raw'
 import chevronRightSvg from '@material-symbols/svg-400/outlined/chevron_right.svg?raw'
 
-export function TrayCollapseRow({ onCollapse }: { onCollapse: () => void }) {
+interface TrayToggleProps {
+  onClick: () => void
+  focusOnMount?: boolean
+}
+
+/** Mount-only on purpose: the flag describes how THIS mount came about. */
+function useFocusOnMount(focusOnMount: boolean) {
+  const ref = useRef<HTMLButtonElement>(null)
+  const initial = useRef(focusOnMount)
+  useEffect(() => {
+    if (initial.current) ref.current?.focus()
+  }, [])
+  return ref
+}
+
+export function TrayHideRow({ onClick, focusOnMount = false }: TrayToggleProps) {
   const [hovered, setHovered] = useState(false)
+  const ref = useFocusOnMount(focusOnMount)
   return (
     <div style={{ display: 'flex', flexShrink: 0, padding: '6px 8px 0' }}>
       <button
+        ref={ref}
         type="button"
-        aria-label="Collapse tray"
-        title="Collapse tray"
-        onClick={onCollapse}
+        aria-label="Hide tray"
+        title="Hide tray"
+        onClick={onClick}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -27,8 +48,8 @@ export function TrayCollapseRow({ onCollapse }: { onCollapse: () => void }) {
           borderRadius: 'var(--radius-control)',
           border: 'none',
           cursor: 'pointer',
-          color: 'var(--text-faint, #888)',
-          background: hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+          color: hovered ? 'var(--text-secondary)' : 'var(--text-faint)',
+          background: hovered ? 'var(--surface-hover)' : 'transparent',
         }}
       >
         <InlineIcon svg={chevronRightSvg} size={18} />
@@ -37,14 +58,16 @@ export function TrayCollapseRow({ onCollapse }: { onCollapse: () => void }) {
   )
 }
 
-export function TrayExpandTab({ onExpand }: { onExpand: () => void }) {
+export function TrayShowTab({ onClick, focusOnMount = false }: TrayToggleProps) {
   const [hovered, setHovered] = useState(false)
+  const ref = useFocusOnMount(focusOnMount)
   return (
     <button
+      ref={ref}
       type="button"
-      aria-label="Expand tray"
-      title="Expand tray"
-      onClick={onExpand}
+      aria-label="Show tray"
+      title="Show tray"
+      onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -59,7 +82,9 @@ export function TrayExpandTab({ onExpand }: { onExpand: () => void }) {
         borderRight: 'none',
         borderRadius: 'var(--radius-control) 0 0 var(--radius-control)',
         cursor: 'pointer',
-        color: hovered ? 'var(--text-secondary)' : 'var(--text-faint, #888)',
+        color: hovered ? 'var(--text-secondary)' : 'var(--text-faint)',
+        // Opaque either way: a translucent hover wash would let the canvas
+        // show through the tab.
         background: 'var(--surface-panel)',
       }}
     >

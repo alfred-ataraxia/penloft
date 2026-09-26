@@ -663,6 +663,144 @@ describe('App — tray layout persistence', () => {
   })
 })
 
+describe('App — hiding the tray and compacting the tool rail', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+  // Both are persisted; clear them so later suites start with the default
+  // shell (tray shown, rail labeled).
+  afterEach(() => {
+    window.localStorage.removeItem('hew.trayCollapsed')
+    window.localStorage.removeItem('hew.railNarrow')
+    window.localStorage.removeItem('hew.dockHidden')
+  })
+
+  const tray = () => screen.queryByRole('complementary', { name: 'Tray' })
+  /** Opens the View menu (closing whatever menu is already open — a click
+   *  on an open trigger would toggle it shut) and returns an item's row. */
+  const viewItem = (label: string) => {
+    fireEvent.mouseDown(document.body)
+    fireEvent.click(screen.getByRole('button', { name: /^view$/i }))
+    return menubar().getByText(label, { exact: true }).closest('div')!
+  }
+
+  it('View ▸ Tray hides the tray and the Show tray tab brings it back', async () => {
+    await renderAndLoad()
+    expect(viewItem('Tray').textContent).toContain('✓')
+    fireEvent.mouseDown(viewItem('Tray'))
+    await waitFor(() => expect(tray()).toBeNull())
+    expect(window.localStorage.getItem('hew.trayCollapsed')).toBe('1')
+    expect(viewItem('Tray').textContent).not.toContain('✓')
+    fireEvent.mouseDown(document.body)
+    fireEvent.click(screen.getByRole('button', { name: 'Show tray' }))
+    await waitFor(() => expect(tray()).not.toBeNull())
+    expect(screen.queryByRole('button', { name: 'Show tray' })).toBeNull()
+  })
+
+  it('takes no keyboard shortcut — Ctrl+\\ leaves the tray alone', async () => {
+    await renderAndLoad()
+    fireEvent.keyDown(document, { key: '\\', code: 'Backslash', ctrlKey: true })
+    fireEvent.keyDown(document, { key: '\\', code: 'Backslash', metaKey: true })
+    expect(tray()).not.toBeNull()
+  })
+
+  it('with the tray hidden, section check marks read unchecked and choosing one reopens the tray with it', async () => {
+    await renderAndLoad()
+    expect(screen.getByRole('button', { name: /outliner/i })).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Hide tray' }))
+    await waitFor(() => expect(tray()).toBeNull())
+
+    const item = viewItem('Model Info')
+    expect(item.textContent).not.toContain('✓')
+    fireEvent.mouseDown(item)
+    await waitFor(() => expect(tray()).not.toBeNull())
+    // Reopened with the section open — not toggled shut behind the scenes.
+    expect(screen.getByRole('button', { name: /outliner/i })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('hiding the tray from a menu blurs a field focused inside it first, then focuses the Show tray tab', async () => {
+    await renderAndLoad()
+    const filter = screen.getByLabelText('Filter outliner')
+    filter.focus()
+    // Blur while still in the document — the moment a blur-to-commit field
+    // (Object Info's Name, a dimension) saves what was typed.
+    let blurredWhileMounted = false
+    filter.addEventListener('blur', () => { blurredWhileMounted = filter.isConnected })
+    // A menu item that doesn't move focus, as a macOS native accelerator
+    // (or a WebKit menu click) doesn't.
+    fireEvent.mouseDown(viewItem('Tray'))
+    await waitFor(() => expect(tray()).toBeNull())
+    expect(blurredWhileMounted).toBe(true)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Show tray' })).toHaveFocus())
+
+    // And back: showing it from the focused tab hands focus to Hide tray.
+    fireEvent.click(screen.getByRole('button', { name: 'Show tray' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Hide tray' })).toHaveFocus())
+  })
+
+  it('hiding the tray from elsewhere leaves focus where it was', async () => {
+    await renderAndLoad()
+    const view = screen.getByRole('button', { name: /^view$/i })
+    view.focus()
+    fireEvent.mouseDown(viewItem('Tray'))
+    await waitFor(() => expect(tray()).toBeNull())
+    expect(view).toHaveFocus()
+  })
+
+  it('closing a section from a menu blurs a field focused inside that section', async () => {
+    await renderAndLoad()
+    const filter = screen.getByLabelText('Filter outliner')
+    filter.focus()
+    let blurredWhileMounted = false
+    filter.addEventListener('blur', () => { blurredWhileMounted = filter.isConnected })
+    fireEvent.mouseDown(viewItem('Model Info'))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /outliner/i })).toHaveAttribute('aria-expanded', 'false'),
+    )
+    expect(blurredWhileMounted).toBe(true)
+  })
+
+  it('closing a different section leaves a focused field alone', async () => {
+    await renderAndLoad()
+    const filter = screen.getByLabelText('Filter outliner')
+    filter.focus()
+    fireEvent.mouseDown(viewItem('Object Info'))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /object info/i })).toHaveAttribute('aria-expanded', 'false'),
+    )
+    expect(filter).toHaveFocus()
+  })
+
+  it('View ▸ Compact Tool Rail compacts the rail and persists it', async () => {
+    await renderAndLoad()
+    expect(viewItem('Compact Tool Rail').textContent).not.toContain('✓')
+    fireEvent.mouseDown(viewItem('Compact Tool Rail'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Expand tool rail' })).toBeInTheDocument())
+    expect(window.localStorage.getItem('hew.railNarrow')).toBe('1')
+    expect(viewItem('Compact Tool Rail').textContent).toContain('✓')
+  })
+
+  it('View ▸ Contextual Dock turns the dock off and back on, and persists it', async () => {
+    await renderAndLoad()
+    const dock = () => document.querySelector('[data-dock-context]')
+    expect(dock()).not.toBeNull()
+    expect(viewItem('Contextual Dock').textContent).toContain('✓')
+    fireEvent.mouseDown(viewItem('Contextual Dock'))
+    await waitFor(() => expect(dock()).toBeNull())
+    expect(window.localStorage.getItem('hew.dockHidden')).toBe('1')
+    expect(viewItem('Contextual Dock').textContent).not.toContain('✓')
+    fireEvent.mouseDown(viewItem('Contextual Dock'))
+    await waitFor(() => expect(dock()).not.toBeNull())
+    expect(window.localStorage.getItem('hew.dockHidden')).toBe('0')
+  })
+
+  it('a dock turned off in an earlier session starts off', async () => {
+    window.localStorage.setItem('hew.dockHidden', '1')
+    await renderAndLoad()
+    expect(document.querySelector('[data-dock-context]')).toBeNull()
+  })
+})
+
 // ---------------------------------------------------------------------------
 // App — hidden-by-default tags: seed from the document's tag registry on
 // load, and persist the eye toggle back to it.

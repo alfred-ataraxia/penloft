@@ -26,6 +26,8 @@ The left rail lists the everyday tools in three groups, each with its keyboard s
 
 Six more tools don't have rail slots: **Protractor**, **Slice**, **Edit Vertex**, and the dedicated camera tools **Orbit** `O`, **Pan** `H`, and **Zoom** `Z`. Reach them from the **Tools** and **Camera** menus, or from the command palette.
 
+Once the shortcuts are second nature, the names can go. Click the chevron at the top of the rail, or choose **View ▸ Compact Tool Rail**, and the rail shrinks to a column of icons. Hover an icon to see its name and key; the search field becomes a magnifier that opens the same command palette. Click the chevron again to bring the names back.
+
 ## The command palette
 
 The search field at the top of the tool rail opens the command palette. Or press `⌘/` on a Mac and `Ctrl+/` everywhere else — the same key in the desktop app and the browser. Type a few letters of anything: every tool, every menu action, and the objects, groups, and tags in your current model are all searchable. Synonyms work too — typing "extrude" finds Push/Pull, "slicer" finds Export.
@@ -49,11 +51,17 @@ The floating bar at the bottom-center of the viewport follows your selection and
 | Several things | Move, Group, Erase |
 | A sketch | Push/Pull, Move, Rotate, Scale, Erase |
 
-Group and Make Component appear only when the selection qualifies (Group needs two or more siblings; Make Component takes objects and groups, not instances). Everything on the dock also lives in the menus; nothing is reachable only from it.
+Group and Make Component appear only when the selection qualifies (Group needs two or more siblings; Make Component takes objects and groups, not instances). Everything on the dock also lives in the menus (Edit is a double-click on the group or component); nothing is reachable only from it.
+
+If you'd rather not have it, turn it off with **View ▸ Contextual Dock**. It stays off, across restarts too, until you turn it back on there.
 
 ## The panels tray
 
-The right-hand tray holds a set of collapsible panels. Click a panel's header to expand or collapse it; drag the tray's left edge to resize it. Each can also be shown or hidden from the **View** menu:
+The right-hand tray holds a set of collapsible panels. Click a panel's header to expand or collapse it; drag the tray's left edge to resize it.
+
+When you want the whole window for the model, hide the tray: click the chevron at its top-left, or choose **View ▸ Tray**. A small tab on the viewport's right edge brings it back at the width you left it. Asking for any one panel while the tray is hidden (from the View menu, or with that panel's shortcut) brings the tray back with that panel open. Hew remembers both the compact rail and the hidden tray: each open window keeps its own layout, and a new window, or the next launch, starts the way you last left them.
+
+Each panel can also be shown or hidden from the **View** menu:
 
 - **Object Info** (View ▸ Object Info, `⇧⌘O` / `Ctrl+Shift+O`) shows the selected item's name, type, solid status, bounding-box dimensions, and tags. This is where you rename things and tag them.
 - **Outliner** (View ▸ Model Info, `⇧⌘I` / `Ctrl+Shift+I`) is the document tree: every object, group, component instance, and sketch, with per-item visibility toggles.

@@ -30,7 +30,7 @@ import { ChangesPanel } from './panels/ChangesPanel'
 import { UnsavedChangesDialog, type UnsavedChangesDecision } from './panels/UnsavedChangesDialog'
 import { parseHistoryEntries } from './panels/changesModel'
 import { ToolRail } from './panels/ToolRail'
-import { TrayCollapseRow, TrayExpandTab } from './panels/TrayToggle'
+import { TrayHideRow, TrayShowTab } from './panels/TrayToggle'
 import { ContextualDock } from './panels/ContextualDock'
 import { nextSelection, mergeSelection, type SelectMode, canBoolean as canBooleanHelper, canBooleanInComponent, canMakeComponent, canPlaceInstance, canExplodeInstance, canMakeUnique, canGroup as canGroupHelper, canUngroup as canUngroupHelper, nodeEq, nodeKey, nodeKindToNumber, nodeRefFromJs, resolveLabel, entityLabel, buildTreeIndexMap, pruneDeadSelection, structuralSelection, type NodeRef } from './panels/treeModel'
 import { tagPathKey } from './panels/tagModel'
@@ -126,8 +126,20 @@ const TRAY_WIDTH_MAX = 560
 const TRAY_WIDTH_KEY = 'hew.trayWidth'
 const RAIL_NARROW_KEY = 'hew.railNarrow'
 const TRAY_COLLAPSED_KEY = 'hew.trayCollapsed'
+const DOCK_HIDDEN_KEY = 'hew.dockHidden'
 const clampTrayWidth = (w: number): number =>
   Math.min(TRAY_WIDTH_MAX, Math.max(TRAY_WIDTH_MIN, Math.round(w)))
+/** Blur the focused element when it sits inside `el`, reporting whether it
+ *  did. Called before a tray section or the whole tray unmounts from a menu
+ *  item or shortcut: the tray's name and dimension fields commit on blur, and
+ *  a macOS native-menu accelerator never moves DOM focus, so without this
+ *  the field would unmount mid-edit and drop what was typed. */
+function blurFocusWithin(el: Element | null): boolean {
+  const active = document.activeElement
+  if (el === null || !(active instanceof HTMLElement) || !el.contains(active)) return false
+  active.blur()
+  return true
+}
 /** Help ▸ Hew Help target — the online user guide's index. */
 const USER_GUIDE_URL = 'https://hew3d.com/learn/'
 
@@ -564,7 +576,10 @@ export default function App() {
     const n = raw !== null ? Number(raw) : NaN
     return Number.isFinite(n) ? clampTrayWidth(n) : TRAY_WIDTH_DEFAULT
   })
-  /** Icons-only tool rail; per window like the tray width, persisted. */
+  /** Icons-only tool rail (View ▸ Compact Tool Rail). Persisted like the
+   *  tray width: read once at mount, so each open window keeps its own, and
+   *  the last value set is what a new window or the next launch starts with
+   *  (one localStorage origin serves every window). */
   const [railNarrow, setRailNarrow] = useState<boolean>(
     () => window.localStorage.getItem(RAIL_NARROW_KEY) === '1',
   )
@@ -572,28 +587,62 @@ export default function App() {
     window.localStorage.setItem(RAIL_NARROW_KEY, railNarrow ? '1' : '0')
   }, [railNarrow])
   const toggleRailNarrow = useCallback(() => setRailNarrow((narrow) => !narrow), [])
-  /** Tray put away entirely; per window, separate from its width so the
-   *  width comes back unchanged. */
+  /** Tray hidden entirely (View ▸ Tray); persisted the same way as the rail
+   *  above, and separately from its width so the width comes back
+   *  unchanged. */
   const [trayCollapsed, setTrayCollapsed] = useState<boolean>(
     () => window.localStorage.getItem(TRAY_COLLAPSED_KEY) === '1',
   )
   useEffect(() => {
     window.localStorage.setItem(TRAY_COLLAPSED_KEY, trayCollapsed ? '1' : '0')
   }, [trayCollapsed])
+  /** Contextual dock turned off (View ▸ Contextual Dock); persisted the
+   *  same way as the rail and tray above. Everything on the dock also lives
+   *  in the menus and palette, so hiding it takes nothing away. */
+  const [dockHidden, setDockHidden] = useState<boolean>(
+    () => window.localStorage.getItem(DOCK_HIDDEN_KEY) === '1',
+  )
+  useEffect(() => {
+    window.localStorage.setItem(DOCK_HIDDEN_KEY, dockHidden ? '1' : '0')
+  }, [dockHidden])
+  const toggleDock = useCallback(() => setDockHidden((hidden) => !hidden), [])
   const trayCollapsedRef = useRef(trayCollapsed)
   trayCollapsedRef.current = trayCollapsed
+  const trayRef = useRef<HTMLDivElement>(null)
+  /** Whether the tray toggle that mounts next should take focus — true when
+   *  the one it replaces (or anything else inside the hidden tray) had it. */
+  const [trayToggleTakesFocus, setTrayToggleTakesFocus] = useState(false)
+  const hideTray = useCallback(() => {
+    if (trayCollapsedRef.current) return
+    setTrayToggleTakesFocus(blurFocusWithin(trayRef.current))
+    setTrayCollapsed(true)
+  }, [])
+  const showTray = useCallback(() => {
+    if (!trayCollapsedRef.current) return
+    const active = document.activeElement
+    setTrayToggleTakesFocus(active instanceof HTMLElement && active.getAttribute('aria-label') === 'Show tray')
+    setTrayCollapsed(false)
+  }, [])
+  const toggleTray = useCallback(() => {
+    if (trayCollapsedRef.current) showTray()
+    else hideTray()
+  }, [hideTray, showTray])
   /** Every section shortcut and menu item goes through here. With the tray
-   *  put away, asking for a section brings the tray back with that section
+   *  hidden, asking for a section brings the tray back with that section
    *  open, rather than flipping it unseen. Deliberately not an effect on the
-   *  showX flags: those sync across windows, and the tray is per window. */
-  const toggleSection = useCallback((setShown: (update: (shown: boolean) => boolean) => void) => {
+   *  showX flags: those sync live across windows (settings/trayLayout.ts),
+   *  while whether the tray is shown is each window's own.
+   *  `title` names the TraySection, so a field focused inside it can commit
+   *  before the section closes (see blurFocusWithin). */
+  const toggleSection = useCallback((setShown: (update: (shown: boolean) => boolean) => void, title: string) => {
     if (trayCollapsedRef.current) {
-      setTrayCollapsed(false)
+      showTray()
       setShown(() => true)
     } else {
+      blurFocusWithin(trayRef.current?.querySelector(`[data-tray-section-body="${title}"]`) ?? null)
       setShown((shown) => !shown)
     }
-  }, [])
+  }, [showTray])
   /** Open document windows (Tauri multi-window only) — the Window menu's
    *  tail of focus-this-window entries. Populated by `list_windows` at
    *  mount and kept fresh by the shell's `window-list` broadcast (window
@@ -1357,7 +1406,7 @@ export default function App() {
   /** Add Scene from a menu: reveal the Scenes section first, so the new
    *  row's rename field is mounted when the hook focuses it. */
   const addSceneFromMenu = () => {
-    setTrayCollapsed(false)
+    showTray()
     setShowScenes(true)
     scenesRename.add()
   }
@@ -1807,6 +1856,13 @@ export default function App() {
       canPlaceCopy: !componentFrameOpen && canPlaceInstance(selectedIds),
       canExplode: canExplodeInstance(selectedIds),
       canMakeUnique: canMakeUnique(selectedIds),
+      // Object ▸ Save Selection to Library… — the dock's Save to Library
+      // verb's gate (one object, group, or instance, on a platform with a
+      // library backend), so the command survives the dock being hidden.
+      canSaveSelectionToLibrary:
+        libraryStore().available() &&
+        selectedIds.length === 1 &&
+        (selectedIds[0].kind === 'object' || selectedIds[0].kind === 'group' || selectedIds[0].kind === 'instance'),
       // Copy/Cut (Lane D): at least one STRUCTURAL node selected — a
       // sketch-only selection still refuses with a toast (doCopy), but the
       // command doesn't even light up for one, matching every other
@@ -3960,14 +4016,14 @@ export default function App() {
         setSelectedIds([{ kind, id: BigInt(idStr) }])
         setShowModelInfo(true)
         setShowObjectInfo(true)
-        setTrayCollapsed(false)
+        showTray()
       }
       return
     }
     if (payload.startsWith('jump-tag:')) {
       const key = payload.slice('jump-tag:'.length)
       setShowTags(true)
-      setTrayCollapsed(false)
+      showTray()
       const nonce = ++revealNonceRef.current
       setRevealTag({ key, nonce })
       // Let the highlight fade back out unless another jump superseded it.
@@ -4148,13 +4204,16 @@ export default function App() {
       case 'tool-zoom-window': activateTool('Zoom Window'); break
       case 'toggle-parallel-projection': viewportApi.current?.toggleProjection(); break
       // Window pane toggles — must use functional updaters (StrictMode safe)
-      case 'toggle-model-info':   toggleSection(setShowModelInfo); break
-      case 'toggle-materials':    toggleSection(setShowMaterials); break
-      case 'toggle-components':   toggleSection(setShowComponents); break
-      case 'toggle-tags':         toggleSection(setShowTags); break
-      case 'toggle-scenes':       toggleSection(setShowScenes); break
-      case 'toggle-changes':      toggleSection(setShowChanges); break
-      case 'toggle-object-info':  toggleSection(setShowObjectInfo); break
+      case 'toggle-model-info':   toggleSection(setShowModelInfo, 'Outliner'); break
+      case 'toggle-materials':    toggleSection(setShowMaterials, 'Materials'); break
+      case 'toggle-components':   toggleSection(setShowComponents, 'Components'); break
+      case 'toggle-tags':         toggleSection(setShowTags, 'Tags'); break
+      case 'toggle-scenes':       toggleSection(setShowScenes, 'Scenes'); break
+      case 'toggle-changes':      toggleSection(setShowChanges, 'Changes'); break
+      case 'toggle-object-info':  toggleSection(setShowObjectInfo, 'Object Info'); break
+      case 'toggle-tray':         toggleTray(); break
+      case 'toggle-compact-rail': toggleRailNarrow(); break
+      case 'toggle-dock':         toggleDock(); break
       case 'toggle-debug-log':    setShowDebugLog((v) => !v); break
       case 'toggle-axes':         setShowAxes((v) => !v); break
       case 'reset-axes':         viewportApi.current?.resetAxes(); break
@@ -4751,27 +4810,27 @@ export default function App() {
       // letter, so compare case-insensitively (else these never fire).
       if (ev.key.toLowerCase() === 'i' && ev.shiftKey) {
         ev.preventDefault()
-        toggleSection(setShowModelInfo)
+        toggleSection(setShowModelInfo, 'Outliner')
         return
       }
       if (ev.key.toLowerCase() === 'c' && ev.shiftKey) {
         ev.preventDefault()
-        toggleSection(setShowMaterials)
+        toggleSection(setShowMaterials, 'Materials')
         return
       }
       if (ev.key.toLowerCase() === 'm' && ev.shiftKey) {
         ev.preventDefault()
-        toggleSection(setShowComponents)
+        toggleSection(setShowComponents, 'Components')
         return
       }
       if (ev.key.toLowerCase() === 't' && ev.shiftKey) {
         ev.preventDefault()
-        toggleSection(setShowTags)
+        toggleSection(setShowTags, 'Tags')
         return
       }
       if (ev.key.toLowerCase() === 'o' && ev.shiftKey) {
         ev.preventDefault()
-        toggleSection(setShowObjectInfo)
+        toggleSection(setShowObjectInfo, 'Object Info')
         return
       }
       if (ev.key.toLowerCase() === 'l' && ev.shiftKey) {
@@ -4954,13 +5013,17 @@ export default function App() {
       'view-grid': showGrid,
       'view-guides': showGuides,
       'view-section-plane': sectionPlaneMenuState.checked,
-      'win-model-info': showModelInfo,
-      'win-materials': showMaterials,
-      'win-components': showComponents,
-      'win-tags': showTags,
-      'win-scenes': showScenes,
-      'win-changes': showChanges,
-      'win-object-info': showObjectInfo,
+      // Sections read "on screen", as in the web MenuBar (see its props).
+      'win-model-info': showModelInfo && !trayCollapsed,
+      'win-materials': showMaterials && !trayCollapsed,
+      'win-components': showComponents && !trayCollapsed,
+      'win-tags': showTags && !trayCollapsed,
+      'win-scenes': showScenes && !trayCollapsed,
+      'win-changes': showChanges && !trayCollapsed,
+      'win-object-info': showObjectInfo && !trayCollapsed,
+      'view-tray': !trayCollapsed,
+      'view-compact-rail': railNarrow,
+      'view-dock': !dockHidden,
       'win-debug-log': showDebugLog,
       'win-library': showLibrary,
       'cam-parallel-projection': parallelProjection,
@@ -4975,6 +5038,7 @@ export default function App() {
       'edit-ungroup': menuGates?.canUngroup ?? false,
       'edit-make-component': menuGates?.canMakeComponent ?? false,
       'edit-place-copy': menuGates?.canPlaceCopy ?? false,
+      'edit-save-selection-to-library': menuGates?.canSaveSelectionToLibrary ?? false,
       'edit-explode': menuGates?.canExplode ?? false,
       'edit-make-unique': menuGates?.canMakeUnique ?? false,
       'edit-union': menuGates?.canBoolean ?? false,
@@ -5020,6 +5084,9 @@ export default function App() {
     showScenes,
     showChanges,
     showObjectInfo,
+    trayCollapsed,
+    railNarrow,
+    dockHidden,
     showDebugLog,
     showLibrary,
     selectedIds,
@@ -5564,22 +5631,31 @@ export default function App() {
         redoLabel={redoLabel}
         activeTool={activeTool}
         onSelectTool={(name) => activateTool(name as ToolName)}
-        showModelInfo={showModelInfo}
-        showMaterials={showMaterials}
-        showComponents={showComponents}
-        showTags={showTags}
-        showScenes={showScenes}
-        showChanges={showChanges}
-        showObjectInfo={showObjectInfo}
+        // A section's check mark means "on screen": with the tray hidden
+        // every section reads unchecked, and choosing one brings the tray
+        // back with it open (toggleSection).
+        showModelInfo={showModelInfo && !trayCollapsed}
+        showMaterials={showMaterials && !trayCollapsed}
+        showComponents={showComponents && !trayCollapsed}
+        showTags={showTags && !trayCollapsed}
+        showScenes={showScenes && !trayCollapsed}
+        showChanges={showChanges && !trayCollapsed}
+        showObjectInfo={showObjectInfo && !trayCollapsed}
+        showTray={!trayCollapsed}
+        onToggleTray={toggleTray}
+        compactRail={railNarrow}
+        onToggleCompactRail={toggleRailNarrow}
+        showDock={!dockHidden}
+        onToggleDock={toggleDock}
         showDebugLog={showDebugLog}
         showLibrary={showLibrary}
-        onToggleModelInfo={() => toggleSection(setShowModelInfo)}
-        onToggleMaterials={() => toggleSection(setShowMaterials)}
-        onToggleComponents={() => toggleSection(setShowComponents)}
-        onToggleTags={() => toggleSection(setShowTags)}
-        onToggleScenes={() => toggleSection(setShowScenes)}
-        onToggleChanges={() => toggleSection(setShowChanges)}
-        onToggleObjectInfo={() => toggleSection(setShowObjectInfo)}
+        onToggleModelInfo={() => toggleSection(setShowModelInfo, 'Outliner')}
+        onToggleMaterials={() => toggleSection(setShowMaterials, 'Materials')}
+        onToggleComponents={() => toggleSection(setShowComponents, 'Components')}
+        onToggleTags={() => toggleSection(setShowTags, 'Tags')}
+        onToggleScenes={() => toggleSection(setShowScenes, 'Scenes')}
+        onToggleChanges={() => toggleSection(setShowChanges, 'Changes')}
+        onToggleObjectInfo={() => toggleSection(setShowObjectInfo, 'Object Info')}
         onToggleDebugLog={() => setShowDebugLog((v) => !v)}
         onToggleLibrary={() => setShowLibrary((v) => !v)}
         onScenesAdd={addSceneFromMenu}
@@ -5611,6 +5687,7 @@ export default function App() {
           canExplode: canExplode,
           canMakeUnique: canUnique,
           canBoolean,
+          canSaveSelectionToLibrary: menuGates?.canSaveSelectionToLibrary ?? false,
           canImport: !componentFrameOpen,
           canDrawText: !componentFrameOpen,
           hasStructuralSelection: menuGates?.hasStructuralSelection ?? false,
@@ -5704,7 +5781,9 @@ export default function App() {
           // of panel content. Clear it on the way out.
           onPointerLeave={() => setInferenceInfo(null)}
         >
-          {trayCollapsed && <TrayExpandTab onExpand={() => setTrayCollapsed(false)} />}
+          {trayCollapsed && (
+            <TrayShowTab onClick={showTray} focusOnMount={trayToggleTakesFocus} />
+          )}
           <Viewport
             wasmScene={state.scene}
             onStatusChange={handleStatusChange}
@@ -5868,7 +5947,9 @@ export default function App() {
               verb (e.g. Rectangle) while a different tool (e.g. Arc) is live.
               hoveringSketchRegion previews the Push/Pull verb when
               nothing is selected and the cursor is aimed at a sketch region
-              — an explicit selection's dock always wins over this hint. */}
+              — an explicit selection's dock always wins over this hint.
+              View ▸ Contextual Dock turns it off entirely. */}
+          {!dockHidden && (
           <div style={{ display: 'contents' }} onPointerOver={() => setInferenceInfo(null)}>
             <ContextualDock
               selectedIds={selectedIds}
@@ -5880,6 +5961,7 @@ export default function App() {
               onRun={(id) => menuActionRef.current(id)}
             />
           </div>
+          )}
 
           {/* Toast stack — positioned inside the viewport container. */}
           <div
@@ -6015,6 +6097,7 @@ export default function App() {
           }}
         />
         <div
+          ref={trayRef}
           role="complementary"
           aria-label="Tray"
           style={{
@@ -6027,7 +6110,7 @@ export default function App() {
             borderLeft: '1px solid var(--border-hairline)',
           }}
         >
-          <TrayCollapseRow onCollapse={() => setTrayCollapsed(true)} />
+          <TrayHideRow onClick={hideTray} focusOnMount={trayToggleTakesFocus} />
           <TraySection title="Object Info" collapsed={!showObjectInfo} onToggle={() => setShowObjectInfo((v) => !v)}>
             <ObjectInfoPanel
               scene={state.scene}
@@ -6567,6 +6650,7 @@ export default function App() {
           canExplode: menuGates?.canExplode ?? false,
           canMakeUnique: menuGates?.canMakeUnique ?? false,
           canBoolean: menuGates?.canBoolean ?? false,
+          canSaveSelectionToLibrary: menuGates?.canSaveSelectionToLibrary ?? false,
           canImport: !componentFrameOpen,
           canDrawText: !componentFrameOpen,
           sceneActive: scenes.activeSid !== null,

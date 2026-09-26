@@ -69,7 +69,10 @@ export function TraySection({ title, collapsed, onToggle, children, headerRight 
         )}
       </div>
       {!collapsed && (
-        <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', padding: '0 13px 13px' }}>
+        // `data-tray-section-body` lets App find this body to settle focus
+        // inside it before a menu or shortcut collapses the section — see
+        // App.tsx's blurFocusWithin.
+        <div data-tray-section-body={title} style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', padding: '0 13px 13px' }}>
           {children}
         </div>
       )}

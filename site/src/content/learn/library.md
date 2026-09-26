@@ -30,7 +30,7 @@ The distinction is curatorial, not mechanical. Any item can be **Inserted** into
 
 ## Saving to the library
 
-Select an object, group, or component instance and choose **Save to Library** from the action dock. You'll be asked for a name — that's all. Add keywords and collections later, in the library itself, where they're easier to think about. A saved item inserts by the bottom center of what you selected — the natural grab point for placing it on the ground or a face. For a different insertion point (a chair by its back-left foot, say), [place the drawing axes](/learn/moving-and-transforming/) there before saving; a deliberately placed axes origin always wins.
+Select an object, group, or component instance and choose **Save to Library** from the action dock (or **Object ▸ Save Selection to Library…**). You'll be asked for a name — that's all. Add keywords and collections later, in the library itself, where they're easier to think about. A saved item inserts by the bottom center of what you selected — the natural grab point for placing it on the ground or a face. For a different insertion point (a chair by its back-left foot, say), [place the drawing axes](/learn/moving-and-transforming/) there before saving; a deliberately placed axes origin always wins.
 
 To save a whole document as a Model item, use **File ▸ Save to Library…**. To save a material, select its swatch in the Materials panel and use its **Save to Library** button.
 

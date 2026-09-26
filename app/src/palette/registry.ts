@@ -52,6 +52,8 @@ export type PaletteGate =
   | 'canExplode'
   | 'canMakeUnique'
   | 'canBoolean'
+  /** One object, group, or instance selected, with a library backend. */
+  | 'canSaveSelectionToLibrary'
   | 'canImport'
   | 'canDrawText'
   /** A Scene is currently active (docs/design/scenes.md §5) — gates
@@ -228,6 +230,9 @@ const ACTION_ENTRIES: PaletteEntry[] = [
   { id: 'view-left', label: 'Standard View: Left', description: 'Look at the model from the left.', group: 'Actions' },
   { id: 'view-right', label: 'Standard View: Right', description: 'Look at the model from the right.', group: 'Actions' },
   { id: 'view-iso', label: 'Standard View: Iso', description: 'Switch to the standard isometric view.', group: 'Actions' },
+  { id: 'toggle-tray', label: 'Toggle Tray', description: 'Show or hide the right-hand tray and all its panels.', group: 'Actions', synonyms: ['hide tray', 'show tray', 'panels', 'sidebar', 'inspector', 'more room', 'hide panels'] },
+  { id: 'toggle-dock', label: 'Toggle Contextual Dock', description: 'Show or hide the floating action dock at the bottom of the viewport.', group: 'Actions', synonyms: ['dock', 'action bar', 'floating toolbar', 'hide dock', 'show dock'] },
+  { id: 'toggle-compact-rail', label: 'Compact Tool Rail', description: 'Shrink the tool rail to icons only, or bring the tool names back.', group: 'Actions', synonyms: ['tool rail', 'toolbar', 'icons only', 'tool names', 'collapse', 'expand', 'sidebar'] },
   { id: 'toggle-model-info', label: 'Toggle Model Info', description: 'Show or hide the Model Info panel.', group: 'Actions' },
   { id: 'toggle-materials', label: 'Toggle Materials', description: 'Show or hide the Materials panel.', group: 'Actions' },
   { id: 'toggle-components', label: 'Toggle Components', description: 'Show or hide the Components panel.', group: 'Actions' },
@@ -242,6 +247,7 @@ const ACTION_ENTRIES: PaletteEntry[] = [
   { id: 'toggle-changes', label: 'Toggle Changes', description: 'Show or hide the Changes panel — this session’s undo/redo entries since the last save.', group: 'Actions', synonyms: ['history', 'undo', 'redo'] },
   { id: 'toggle-debug-log', label: 'Toggle Debug Log', description: 'Show or hide the debug log panel.', group: 'Actions' },
   { id: 'open-library', label: 'Library', description: 'Browse and insert saved components, materials, and models', group: 'Actions', synonyms: ['library', 'components', 'insert'] },
+  { id: 'save-to-library', label: 'Save Selection to Library…', description: 'Save the selected object, group, or component as a library item.', group: 'Actions', synonyms: ['library', 'component', 'save selection'], gate: 'canSaveSelectionToLibrary' },
   { id: 'save-to-library-doc', label: 'Save to Library…', description: 'Save the whole document as a library item.', group: 'Actions', synonyms: ['library', 'component', 'model'] },
   { id: 'purge-unused', label: 'Purge Unused…', description: 'Delete every unused palette material and component definition.', group: 'Actions', synonyms: ['cleanup', 'clean up', 'materials', 'components'] },
   { id: 'open-settings', label: 'Settings…', description: 'Open Hew Settings.', group: 'Actions', synonyms: ['preferences'] },
@@ -265,7 +271,6 @@ export const PALETTE_EXCLUDED_ACTION_IDS: Record<string, string> = {
   'ungroup': 'contextual-dock alias of edit-ungroup',
   'make-unique': 'contextual-dock alias of edit-make-unique',
   'explode-instance': 'contextual-dock alias of edit-explode',
-  'save-to-library': 'contextual-dock only — needs a single selected object/group/instance, not a bare trigger (the whole-document save is separately registered as save-to-library-doc)',
   'toggle-library': 'keyboard/native-menu/dock-icon toggle alias of open-library — the palette exposes the single "open" verb, not a checkbox toggle',
 }
 

@@ -1,24 +1,33 @@
 /**
  * ToolRail — the labeled left tool rail (`03_tool_rail.md`).
  *
- * Replaces the old horizontal icon-only toolbar: a fixed 172px vertical rail,
- * grouped Draw/Modify/Inspect, every row showing icon + name + keyboard
- * shortcut. Only tools with a `group` in `tools/toolRegistry.ts` get a row
- * here — the rest (Protractor/Slice/Edit Vertex/camera tools) stay reachable
- * via the Tools/Camera menus (and, once lands, the command palette).
+ * A vertical rail grouped Draw/Modify/Inspect, every row showing icon + name
+ * + keyboard shortcut; compacted (View ▸ Compact Tool Rail, or the chevron at
+ * its top) it drops to icons only. Only tools with a `group` in
+ * `tools/toolRegistry.ts` get a row here — the rest (Protractor/Slice/Edit
+ * Vertex/camera tools) stay reachable via the Tools/Camera menus and the
+ * command palette.
  *
  * Radio behavior: exactly one tool is active at a time, driven by the same
  * `activeTool`/`onSelectTool` pair MenuBar.tsx's Draw/Tools/Camera menus use.
+ * Only the tool rows live inside the `radiogroup`; the compact toggle, the
+ * palette field, and the Library row sit outside it, so assistive tech
+ * counts exactly the tools as the group's options.
  */
 
 import { useState } from 'react'
 import { TOOL_ICON_SVG } from '../tools/toolIcons'
 import { RAIL_GROUPS, toolsInGroup, shortcutFor, type ToolName } from '../tools/toolRegistry'
 import { isMac } from '../platform'
+import { InlineIcon } from './InlineIcon'
 import libraryBooksSvg from '@material-symbols/svg-400/outlined/library_books.svg?raw'
 import chevronLeftSvg from '@material-symbols/svg-400/outlined/chevron_left.svg?raw'
 import chevronRightSvg from '@material-symbols/svg-400/outlined/chevron_right.svg?raw'
+import searchSvg from '@material-symbols/svg-400/outlined/search.svg?raw'
 
+/** Content width of the rail (the container adds its own padding and
+ * hairline border): wide shows names and shortcut chips, narrow fits one
+ * 16px icon inside a row's own horizontal padding. */
 export const RAIL_WIDE_WIDTH = 172
 export const RAIL_NARROW_WIDTH = 34
 
@@ -26,11 +35,11 @@ export interface ToolRailProps {
   activeTool: ToolName
   onSelectTool: (name: ToolName) => void
   /** When set, a resting command-palette search field is drawn at the top of
-   * the rail. Home of the field on every platform since  (macOS forced it
-   * out of the menu bar — no in-window bar to host it — and the other
-   * platforms follow for cross-platform consistency, superseding
-   * `04_command_palette.md`'s menu-bar placement). Clicking it opens the
-   * palette. */
+   * the rail (an icon button when narrow). Home of the field on every
+   * platform: macOS forced it out of the menu bar — no in-window bar to host
+   * it — and the other platforms follow for cross-platform consistency,
+   * superseding `04_command_palette.md`'s menu-bar placement. Clicking it
+   * opens the palette. */
   onOpenPalette?: () => void
   /** Shortcut label shown in the field's kbd chip (e.g. '⌘/' on macOS
    * desktop, 'Ctrl K' on Windows/Linux/Web). */
@@ -46,10 +55,11 @@ export interface ToolRailProps {
    * though this isn't a tool (no ToolName of its own). */
   libraryOpen?: boolean
   /** Icons-only mode: rows lose their name and shortcut chip, the palette
-   * field is absent, group headings become hairline dividers. The rail
-   * stays visible and every tool stays one click away; the row's `title`
-   * carries the name as a tooltip. */
+   * field shrinks to a search icon, group headings become hairline
+   * dividers. The rail stays visible and every tool stays one click away;
+   * each row's `title` carries its name and shortcut as a tooltip. */
   narrow?: boolean
+  /** When set, a chevron at the top of the rail toggles `narrow`. */
   onToggleNarrow?: () => void
 }
 
@@ -97,21 +107,35 @@ function RailSearchField({ onOpen, kbd }: { onOpen: () => void; kbd: string }) {
   )
 }
 
-/** Inline Material Symbols icon (moved here from App.tsx in). The
- * source SVGs carry no `fill` attribute, so `fill="currentColor"` is spliced
- * onto the root `<svg>` tag here — letting the row's `color` style (active
- * vs. idle) drive icon color without a stylesheet. */
-export function InlineIcon({ svg, size = 16 }: { svg: string; size?: number }) {
-  const sized = svg
-    .replace(/\swidth="[^"]*"/, '')
-    .replace(/\sheight="[^"]*"/, '')
-    .replace('<svg ', `<svg fill="currentColor" width="${size}" height="${size}" `)
+/** The palette field's narrow-rail form: an icon-only row that opens the
+ * same palette, its shortcut carried by the tooltip. */
+function RailSearchButton({ onOpen, kbd }: { onOpen: () => void; kbd: string }) {
+  const [hovered, setHovered] = useState(false)
   return (
-    <span
-      aria-hidden="true"
-      style={{ width: `${size}px`, height: `${size}px`, display: 'block', overflow: 'hidden', flexShrink: 0 }}
-      dangerouslySetInnerHTML={{ __html: sized }}
-    />
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label="Search tools, actions, help"
+      title={`Search tools, actions, help (${kbd})`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        // One px less than a tool row's padding, so the hairline border
+        // leaves the icon on the same column as the tool icons below.
+        padding: '5px calc(var(--space-4) - 1px)',
+        margin: '0 0 var(--space-3, 8px)',
+        width: '100%',
+        borderRadius: 'var(--radius-control)',
+        border: '1px solid var(--border-hairline)',
+        cursor: 'pointer',
+        color: 'var(--text-faint)',
+        background: hovered ? 'var(--surface-hover)' : 'var(--surface-input)',
+      }}
+    >
+      <InlineIcon svg={searchSvg} />
+    </button>
   )
 }
 
@@ -121,12 +145,20 @@ function ToolIcon({ name, size = 16 }: { name: ToolName; size?: number }) {
 
 function RailWidthToggle({ narrow, onToggle }: { narrow: boolean; onToggle: () => void }) {
   const [hovered, setHovered] = useState(false)
+  const label = narrow ? 'Expand tool rail' : 'Compact tool rail'
   return (
     <button
       type="button"
-      aria-label={narrow ? 'Expand tool rail' : 'Collapse tool rail'}
-      title={narrow ? 'Expand tool rail' : 'Collapse tool rail'}
-      onClick={onToggle}
+      aria-label={label}
+      aria-expanded={!narrow}
+      title={label}
+      onClick={() => {
+        // The click moves the chevron out from under the pointer (the rail
+        // changes width and the chevron re-aligns), and no mouseleave
+        // follows a move like that — clear the hover here or its wash sticks.
+        setHovered(false)
+        onToggle()
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -136,9 +168,9 @@ function RailWidthToggle({ narrow, onToggle }: { narrow: boolean; onToggle: () =
         borderRadius: 'var(--radius-control)',
         border: 'none',
         cursor: 'pointer',
-        color: 'var(--text-faint, #888)',
-        background: hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
-        marginBottom: narrow ? 0 : 'var(--space-3, 8px)',
+        color: hovered ? 'var(--text-secondary)' : 'var(--text-faint)',
+        background: hovered ? 'var(--surface-hover)' : 'transparent',
+        marginBottom: 'var(--space-3, 8px)',
       }}
     >
       <InlineIcon svg={narrow ? chevronRightSvg : chevronLeftSvg} size={18} />
@@ -147,11 +179,14 @@ function RailWidthToggle({ narrow, onToggle }: { narrow: boolean; onToggle: () =
 }
 
 function GroupHeading({ label, narrow }: { label: string; narrow: boolean }) {
+  // Narrow: a purely visual divider. The group names carry no meaning a
+  // screen reader needs (each tool row is labeled on its own), and a
+  // separator role inside the radiogroup would be counted among its options.
   if (narrow) {
     return (
       <div
-        role="separator"
-        aria-label={label}
+        aria-hidden="true"
+        data-rail-divider={label}
         style={{ borderTop: '1px solid var(--border-hairline)', margin: '8px var(--space-4)' }}
       />
     )
@@ -233,7 +268,7 @@ function ToolRow({
         fontSize: 'var(--font-size-tool-row)',
         fontWeight: active ? 600 : 400,
         color: active ? 'var(--accent-text-on-tint)' : 'var(--text-secondary)',
-        background: active ? 'var(--accent-tint-15)' : hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+        background: active ? 'var(--accent-tint-15)' : hovered ? 'var(--surface-hover)' : 'transparent',
         boxShadow: active ? 'inset 2px 0 0 var(--accent-base)' : 'none',
       }}
     >
@@ -278,7 +313,7 @@ function LibraryRow({ active, narrow, onSelect }: { active: boolean; narrow: boo
         fontSize: 'var(--font-size-tool-row)',
         fontWeight: active ? 600 : 400,
         color: active ? 'var(--accent-text-on-tint)' : 'var(--text-secondary)',
-        background: active ? 'var(--accent-tint-15)' : hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+        background: active ? 'var(--accent-tint-15)' : hovered ? 'var(--surface-hover)' : 'transparent',
         boxShadow: active ? 'inset 2px 0 0 var(--accent-base)' : 'none',
       }}
     >
@@ -305,8 +340,8 @@ export function ToolRail({
 }: ToolRailProps) {
   return (
     <div
-      role="radiogroup"
-      aria-label="Tools"
+      role="complementary"
+      aria-label="Tool rail"
       style={{
         width: `${narrow ? RAIL_NARROW_WIDTH : RAIL_WIDE_WIDTH}px`,
         flexShrink: 0,
@@ -320,23 +355,28 @@ export function ToolRail({
       }}
     >
       {onToggleNarrow !== undefined && <RailWidthToggle narrow={narrow} onToggle={onToggleNarrow} />}
-      {onOpenPalette !== undefined && !narrow && (
-        <RailSearchField onOpen={onOpenPalette} kbd={paletteKbd ?? 'Ctrl K'} />
-      )}
-      {RAIL_GROUPS.map((group) => (
-        <div key={group}>
-          <GroupHeading label={group} narrow={narrow} />
-          {toolsInGroup(group).map((t) => (
-            <ToolRow
-              key={t.name}
-              name={t.name}
-              active={activeTool === t.name}
-              narrow={narrow}
-              onSelect={() => onSelectTool(t.name)}
-            />
-          ))}
-        </div>
-      ))}
+      {onOpenPalette !== undefined &&
+        (narrow ? (
+          <RailSearchButton onOpen={onOpenPalette} kbd={paletteKbd ?? 'Ctrl K'} />
+        ) : (
+          <RailSearchField onOpen={onOpenPalette} kbd={paletteKbd ?? 'Ctrl K'} />
+        ))}
+      <div role="radiogroup" aria-label="Tools" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+        {RAIL_GROUPS.map((group) => (
+          <div key={group}>
+            <GroupHeading label={group} narrow={narrow} />
+            {toolsInGroup(group).map((t) => (
+              <ToolRow
+                key={t.name}
+                name={t.name}
+                active={activeTool === t.name}
+                narrow={narrow}
+                onSelect={() => onSelectTool(t.name)}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
       {onOpenLibrary !== undefined && (
         <div>
           <GroupHeading label="Library" narrow={narrow} />
