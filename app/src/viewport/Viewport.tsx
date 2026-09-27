@@ -729,6 +729,15 @@ export interface ViewportApi {
    */
   refreshScene: () => void
   /**
+   * Re-derive the open session stack's scope and labels from the live
+   * document and push them up via `onSessionChange` if they changed. Every
+   * commit already does this through `refreshScene`; a panel mutation that
+   * skips the re-tessellation (a rename) calls it directly, so the
+   * "Editing …" breadcrumb follows a renamed component definition or
+   * instance. A no-op push when nothing changed.
+   */
+  refreshSessionScope: () => void
+  /**
    * Apply a committed palette-opacity edit to the already-built scene.
    * Palette alpha is live render state, not baked geometry (the kernel's
    * `set_material_alpha` returns an empty change for the same reason), so
@@ -801,9 +810,11 @@ export interface ViewportApi {
    * high-contrast per-pixel flips is depth-test instability (the edge-shimmer
    * defect). Renders synchronously because the drawing buffer is not
    * preserved after the frame is composited, so pixels must be read in the
-   * same task as the draw.
+   * same task as the draw. `width`/`height` are the drawing buffer's device
+   * pixels; `cssWidth`/`cssHeight` are the canvas's CSS size, which
+   * `worldToScreen` measures in — their ratio is the renderer's pixel ratio.
    */
-  captureFrame: () => { width: number; height: number; pixels: Uint8Array }
+  captureFrame: () => { width: number; height: number; cssWidth: number; cssHeight: number; pixels: Uint8Array }
 
   /**
    * Print pass (docs/design/printing.md §7): render each requested page with
@@ -5455,7 +5466,7 @@ export default function Viewport({
       }
     }
 
-    function captureFrame(): { width: number; height: number; pixels: Uint8Array } {
+    function captureFrame(): { width: number; height: number; cssWidth: number; cssHeight: number; pixels: Uint8Array } {
       // Mirror the per-frame camera-dependent updates of the animation loop
       // (this renders out-of-band, without going through it) so a captured
       // frame is exactly what the loop would put on screen for this pose.
@@ -5469,7 +5480,7 @@ export default function Viewport({
       const height = gl.drawingBufferHeight
       const pixels = new Uint8Array(width * height * 4)
       gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
-      return { width, height, pixels }
+      return { width, height, cssWidth: renderer.domElement.clientWidth, cssHeight: renderer.domElement.clientHeight, pixels }
     }
 
     /**
@@ -6112,7 +6123,7 @@ export default function Viewport({
         toolController.setTool(tool)
       }
 
-      apiRefRef.current.current = { runBoolean, runGroup, runUngroup, runReparent, runDelete, runMakeComponent, runPlaceInstance, runExplodeInstance, runMakeUnique, runOpenExplodeSession, runOpenExplodeSessionOrFallback: openExplodeSessionOrFallback, runCloseExplodeSession, explodeSessionInstance: () => explodeSessionInstanceRef.current, runOpenGroupSession, runCloseGroupSession, runCloseInnermostSession, sessionStack: () => [...sessionStackRef.current], sessionMembers: () => (sessionDirectMembersRef.current === null ? null : [...sessionDirectMembersRef.current]), hasArmedGesture: () => toolHasArmedGesture(toolController.activeTool), confirmPendingRescale, cancelPendingRescale, notifyLoaded, refreshScene, syncMaterialOpacity, isCapturingInput, runUndo, runRedo, zoomExtents, zoomToWorldBounds, setStandardView, setCamera, captureFrame, renderPrintPages, getPrintView, computePrintExtent, getSelectedIds: () => sceneRenderer.getSelectedIds(), getHiddenIds: () => sceneRenderer.getHiddenIds(), collectAnnotationDrawing: () => sceneRenderer.collectAnnotationDrawing(), worldToScreen: worldToScreenPx, frameCount: () => renderScheduler.frameCount, getCamera, getCameraState, applyCameraState, tweenCameraState, cancelCameraTween, setSectionPlane, setHomeFraming, setHidden, selectAll, invertSelection, setAxesVisible, setGridVisible, setGuidesVisible, deleteAllGuides, resetAxes, runDeleteGuide, runDeleteAnnotation, commitAnnotationEditorText, cancelAnnotationEditor, getAnnotationLabel, getAnnotationTextWorldPosition, toggleSectionActive, getSectionState, getSectionRenderInfo, exportGlb, exportStl, export3mf, exportUsdz, toggleProjection, getProjection: () => rig.projection, setFov, armTextPlacement, armLibraryPlacement, clearSnapHold: () => snapService.clearHold() }
+      apiRefRef.current.current = { runBoolean, runGroup, runUngroup, runReparent, runDelete, runMakeComponent, runPlaceInstance, runExplodeInstance, runMakeUnique, runOpenExplodeSession, runOpenExplodeSessionOrFallback: openExplodeSessionOrFallback, runCloseExplodeSession, explodeSessionInstance: () => explodeSessionInstanceRef.current, runOpenGroupSession, runCloseGroupSession, runCloseInnermostSession, sessionStack: () => [...sessionStackRef.current], sessionMembers: () => (sessionDirectMembersRef.current === null ? null : [...sessionDirectMembersRef.current]), hasArmedGesture: () => toolHasArmedGesture(toolController.activeTool), confirmPendingRescale, cancelPendingRescale, notifyLoaded, refreshScene, refreshSessionScope, syncMaterialOpacity, isCapturingInput, runUndo, runRedo, zoomExtents, zoomToWorldBounds, setStandardView, setCamera, captureFrame, renderPrintPages, getPrintView, computePrintExtent, getSelectedIds: () => sceneRenderer.getSelectedIds(), getHiddenIds: () => sceneRenderer.getHiddenIds(), collectAnnotationDrawing: () => sceneRenderer.collectAnnotationDrawing(), worldToScreen: worldToScreenPx, frameCount: () => renderScheduler.frameCount, getCamera, getCameraState, applyCameraState, tweenCameraState, cancelCameraTween, setSectionPlane, setHomeFraming, setHidden, selectAll, invertSelection, setAxesVisible, setGridVisible, setGuidesVisible, deleteAllGuides, resetAxes, runDeleteGuide, runDeleteAnnotation, commitAnnotationEditorText, cancelAnnotationEditor, getAnnotationLabel, getAnnotationTextWorldPosition, toggleSectionActive, getSectionState, getSectionRenderInfo, exportGlb, exportStl, export3mf, exportUsdz, toggleProjection, getProjection: () => rig.projection, setFov, armTextPlacement, armLibraryPlacement, clearSnapHold: () => snapService.clearHold() }
     }
 
     // ------------------------------------------------------------------ tool factories

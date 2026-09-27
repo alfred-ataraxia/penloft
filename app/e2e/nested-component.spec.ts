@@ -448,3 +448,32 @@ test('nested component: drill into a member group, edit it, step back out', asyn
   const groupMembersFinal = await page.evaluate((g) => window.__hew_test!.getGroupMembers(g), group)
   expect(groupMembersFinal).toEqual([{ kind: 'object', id: groupMemberId }])
 })
+
+test('renaming the definition mid-session updates the "Editing" breadcrumb', async ({ page }) => {
+  // Components section open, as components.spec.ts does.
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'hew.settings.trayLayout',
+      JSON.stringify({ modelInfo: true, objectInfo: true, materials: false, components: true, tags: false, scenes: false }),
+    )
+  })
+  const ctx = await ready(page).then(() => aim(page, CAMERA))
+
+  const { instance } = await page.evaluate(() => {
+    const h = window.__hew_test!
+    return h.makeComponent([h.drawBox([0, 0, 0], [1, 1, 0], 1)])
+  })
+
+  // Enter the session with a real double-click on the instance's top face.
+  await dblClickWorld(page, ctx, 0.5, 0.5, 1)
+  await expect.poll(() => page.evaluate(() => window.__hew_test!.getExplodeSessionInstance())).toBe(instance)
+  await expect(page.getByText('Editing Component 1')).toBeVisible()
+
+  // Rename the definition in the Components panel. Nothing drawn changes
+  // (no re-tessellation), but the breadcrumb names the definition live.
+  await page.getByRole('button', { name: 'Rename component Component 1' }).click()
+  const input = page.getByRole('textbox', { name: /rename component/i })
+  await input.fill('Cabinet')
+  await input.press('Enter')
+  await expect(page.getByText('Editing Cabinet')).toBeVisible()
+})

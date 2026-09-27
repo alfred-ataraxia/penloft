@@ -62,6 +62,17 @@ export interface LiveBridgeDeps {
    * `useScenesController`'s `activate`.
    */
   activateScene?: (sid: number) => void
+  /**
+   * Recompute the hidden set (hidden tags from the document's registry,
+   * plus hidden nodes and groups) and push it to the renderer and the
+   * kernel's pick/snap exclusion, only if it actually changed. A live
+   * command can assign a hidden tag, hide or show a tag, rename or delete
+   * one, reparent a node into a hidden group, or undo any of those — and
+   * the viewport refresh alone only re-applies the hidden set it already
+   * had. Optional (a host without visibility state omits it); App.tsx
+   * wires it to its `reconcileVisibility`.
+   */
+  reconcileVisibility?: () => void
 }
 
 /** Whether a dispatch of `method` could have changed the document, per
@@ -225,6 +236,17 @@ function applyViewDirective(
   }
 }
 
+/** Whether a pending view directive (`take_pending_view_directive`'s JSON)
+ *  is a `hew.scenes.apply` activation. Malformed JSON answers false. */
+function isSceneActivation(directiveJson: string | undefined): boolean {
+  if (directiveJson === undefined) return false
+  try {
+    return (JSON.parse(directiveJson) as ViewDirective).kind === 'activate_scene'
+  } catch {
+    return false
+  }
+}
+
 /** Parses and applies `directiveJson` (from `Scene.take_pending_view_directive`),
  * tolerating malformed input defensively (should never happen — the Rust
  * side is the only producer) by no-op rather than throwing into the Tauri
@@ -342,13 +364,20 @@ export function installLiveBridge(deps: LiveBridgeDeps): () => void {
     const reply = scene.api_dispatch(wasmId, frame)
     if (reply === undefined) return // a notification: no reply, per §4.1
     emitReply(connId, reply)
-    if (shouldRefreshAfterDispatch(scene, frame, reply)) refreshAfterMutation()
+    const mutated = shouldRefreshAfterDispatch(scene, frame, reply)
+    if (mutated) refreshAfterMutation()
     // `hew.view.camera`/`zoom_extents`/`units`: a non-mutating host effect
     // `Scene::api_dispatch` left for this bridge to actually perform
     // (`take_pending_view_directive`'s own doc comment has the full
     // story). `undefined` for every other dispatch, including a refused
     // view command.
     const directiveJson = scene.take_pending_view_directive()
+    // A Scene activation applies the Scene's hidden nodes AND tags itself;
+    // reconciling tags first would push against the pre-activation node
+    // hides, only to be overwritten a moment later.
+    if (mutated && !(deps.activateScene !== undefined && isSceneActivation(directiveJson))) {
+      deps.reconcileVisibility?.()
+    }
     if (directiveJson !== undefined) {
       applyPendingViewDirective(directiveJson, deps.getViewportApi(), deps.activateScene)
     }

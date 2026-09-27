@@ -64,10 +64,23 @@ interface Props {
   /** The currently selected nodes (ordered; index 0 = primary). */
   selectedIds: NodeRef[]
   /**
-   * Must be called after any mutation so the scene re-renders and other panels
-   * update. This is the same handleDocumentChanged that all other mutations use.
+   * Called after a rename — the docRev/dirty/selection bookkeeping every
+   * mutation needs, plus the open session's breadcrumb label; nothing drawn
+   * changes, so no re-tessellation.
    */
-  onDocumentChanged: () => void
+  onNameChanged: () => void
+  /**
+   * Called after a mutation that changes drawn geometry (Segments rebuilds
+   * a circle's chords): the bookkeeping above plus a re-tessellation, or
+   * the viewport keeps drawing the old shape until something else repaints.
+   */
+  onGeometryChanged: () => void
+  /**
+   * Called after a tag is added or removed: the bookkeeping above plus a
+   * re-push of tag visibility, since the node may have just gained or lost
+   * a hidden tag.
+   */
+  onTagsChanged: () => void
   /**
    * Replace the selection with `nodes` — the "(N instances)" click, and the
    * re-point a re-facet needs once it has replaced the selected curve's
@@ -144,7 +157,7 @@ const ADD_TAG_BUTTON_STYLE: React.CSSProperties = {
   flexShrink: 0,
 }
 
-export function ObjectInfoPanel({ scene, docRev, selectedIds, onDocumentChanged, onSelectMany, onToast }: Props) {
+export function ObjectInfoPanel({ scene, docRev, selectedIds, onNameChanged, onGeometryChanged, onTagsChanged, onSelectMany, onToast }: Props) {
   // --------------------------------------------------------------------------
   // Derive the node info from the scene whenever docRev or selectedIds changes.
   // --------------------------------------------------------------------------
@@ -387,8 +400,8 @@ export function ObjectInfoPanel({ scene, docRev, selectedIds, onDocumentChanged,
     // Pass undefined to clear; pass the string to set. Clearing makes the
     // field fall back to the placeholder default label (Outliner parity).
     scene.set_node_name(nodeInfo.kindNum, nodeInfo.id, trimmed === '' ? undefined : trimmed)
-    onDocumentChanged()
-  }, [nodeInfo, localName, scene, onDocumentChanged])
+    onNameChanged()
+  }, [nodeInfo, localName, scene, onNameChanged])
 
   // --------------------------------------------------------------------------
   // Definition Name (instances only) — local controlled state + commit,
@@ -419,8 +432,8 @@ export function ObjectInfoPanel({ scene, docRev, selectedIds, onDocumentChanged,
     if (nodeInfo === null || nodeInfo.defId === null) return
     const trimmed = localDefName.trim()
     scene.set_component_name(nodeInfo.defId, trimmed === '' ? undefined : trimmed)
-    onDocumentChanged()
-  }, [nodeInfo, localDefName, scene, onDocumentChanged])
+    onNameChanged()
+  }, [nodeInfo, localDefName, scene, onNameChanged])
 
   // --------------------------------------------------------------------------
   // "(N instances)" click: select every instance of the definition. The
@@ -528,8 +541,8 @@ export function ObjectInfoPanel({ scene, docRev, selectedIds, onDocumentChanged,
     if (repointTo !== null) {
       onSelectMany([{ kind: 'sketch-curve', id: repointTo, sketch: sketchId }])
     }
-    onDocumentChanged()
-  }, [nodeInfo, localSegments, scene, onDocumentChanged, onSelectMany, onToast])
+    onGeometryChanged()
+  }, [nodeInfo, localSegments, scene, onGeometryChanged, onSelectMany, onToast])
 
   // --------------------------------------------------------------------------
   // Tag add state — hidden behind a "+" affordance (HIG-style disclosure).
@@ -607,8 +620,8 @@ export function ObjectInfoPanel({ scene, docRev, selectedIds, onDocumentChanged,
     }
     setTagInput('')
     setAddingTag(false)
-    onDocumentChanged()
-  }, [nodeInfo, multi, tagInput, scene, onDocumentChanged, onToast])
+    onTagsChanged()
+  }, [nodeInfo, multi, tagInput, scene, onTagsChanged, onToast])
 
   const handleRemoveTagFromAll = useCallback((path: string[]) => {
     if (multi === null) return
@@ -618,14 +631,14 @@ export function ObjectInfoPanel({ scene, docRev, selectedIds, onDocumentChanged,
       onToast?.(`Remove tag failed: ${err instanceof Error ? err.message : String(err)}`)
       return
     }
-    onDocumentChanged()
-  }, [multi, scene, onDocumentChanged, onToast])
+    onTagsChanged()
+  }, [multi, scene, onTagsChanged, onToast])
 
   const handleRemoveTag = useCallback((path: string[]) => {
     if (nodeInfo === null || nodeInfo.kindNum === null) return
     scene.remove_node_tag(nodeInfo.kindNum, nodeInfo.id, path)
-    onDocumentChanged()
-  }, [nodeInfo, scene, onDocumentChanged])
+    onTagsChanged()
+  }, [nodeInfo, scene, onTagsChanged])
 
   // --------------------------------------------------------------------------
   // Render

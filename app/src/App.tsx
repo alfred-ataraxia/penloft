@@ -248,6 +248,14 @@ function undoRedoMenuLabels(scene: Scene | null): { undo: string; redo: string }
   }
 }
 
+/** Whether two id lists name the same set of ids, ignoring order and
+ *  duplicates (a node hidden by two sources appears twice in a union). */
+function sameIds(a: readonly bigint[], b: readonly bigint[]): boolean {
+  const sa = new Set(a)
+  const sb = new Set(b)
+  return sa.size === sb.size && [...sa].every((id) => sb.has(id))
+}
+
 /** Whether two session stacks are the SAME sequence of frames (identity at
  *  every position, ignoring label — a label can legitimately change under a
  *  stack that is otherwise the same frame, e.g. a rename) — `handleSessionChange`'s
@@ -700,6 +708,10 @@ export default function App() {
   // handleRedo — defined before the seeding helpers — reach the latest
   // closure through this ref, same pattern as pushUnionHiddenRef.
   const resyncTagVisibilityRef = useRef<() => void>(() => {})
+  // Same forward-reference pattern for `reconcileVisibility` (the cheap,
+  // change-detecting variant) — the live bridge and the test harness install
+  // once on mount and reach the latest closure through it.
+  const reconcileVisibilityRef = useRef<() => void>(() => {})
   // Latest tag handlers for the test harness — it installs once on mount
   // (before these are defined further down), so it reaches them through
   // refs, the same pattern as reconcileRef/applyLoadedBytesRef.
@@ -1506,6 +1518,15 @@ export default function App() {
     else handleDocumentChanged()
   }, [handleDocumentChanged])
 
+  /** After a rename from a panel: nothing drawn changes, so no
+   *  re-tessellation — but an open session's "Editing …" breadcrumb shows a
+   *  component's live name, so re-derive the session labels too. */
+  const handleNameChanged = useCallback(() => {
+    handleDocumentChanged()
+    const api = viewportApi.current
+    if (api !== null && api.sessionStack().length > 0) api.refreshSessionScope()
+  }, [handleDocumentChanged])
+
   // Re-derive the View ▸ Section Cut menu state from the section
   // manager's own truth (`getSectionState`) — called by the viewport
   // whenever a section is placed/offset-committed/toggled/deleted, or a
@@ -1571,6 +1592,7 @@ export default function App() {
       deleteTag: (path) => deleteTagRef.current(path),
       toggleNodeHidden: (node) => handleToggleHiddenRef.current(node),
       isNodeHidden: (node) => hiddenKeysRef.current.has(nodeKey(node)),
+      reconcileVisibility: () => reconcileVisibilityRef.current(),
       setPrintRecorder: (r) => {
         printRecorderRef.current = r
       },
@@ -1591,6 +1613,7 @@ export default function App() {
       // written by the time the directive arrives; this syncs panels, the
       // renderer, and the camera exactly as a row click would.
       activateScene: (sid) => scenesRef.current.activate(sid),
+      reconcileVisibility: () => reconcileVisibilityRef.current(),
     })
   }, [])
 
@@ -5140,10 +5163,16 @@ export default function App() {
    * (before setState is applied) without waiting for a re-render.
    */
   const pushUnionHidden = useCallback(
-    (nextHiddenKeys: Set<string>, nextHiddenTagPaths: Set<string>) => {
+    (nextHiddenKeys: Set<string>, nextHiddenTagPaths: Set<string>, opts?: { onlyIfChanged?: boolean }) => {
       const scene = state?.scene
       if (scene === undefined) return
       const { objectIds, instanceIds } = unionHiddenLeafIds(scene, nextHiddenKeys, nextHiddenTagPaths)
+      // `onlyIfChanged`: skip the push when the renderer already hides
+      // exactly this set — `set_hidden` rebuilds the kernel's whole
+      // snap/pick registration, too costly to pay after every mutation that
+      // merely MIGHT have moved something in or out of hiding.
+      const shown = opts?.onlyIfChanged === true ? viewportApi.current?.getHiddenIds() : undefined
+      if (shown !== undefined && sameIds(shown.objects, objectIds) && sameIds(shown.instances, instanceIds)) return
       // (1) Renderer: hide the meshes. (2) Kernel inference: drop the hidden
       // geometry so snap/pick_face skip it — otherwise you'd still snap to and
       // be unable to click past a hidden solid's edges/faces.
@@ -5234,6 +5263,32 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hiddenKeys, pushUnionHidden])
   resyncTagVisibilityRef.current = resyncTagVisibility
+
+  // After a mutation that may have moved a node in or out of hiding without
+  // going through the Tags panel or the Outliner eye — an Object Info tag
+  // edit, a live API command (a tag assigned, hidden, renamed or deleted; a
+  // node reparented into a hidden group), the harness's addNodeTag.
+  // Re-seeds tags from the registry like `resyncTagVisibility`, but
+  // cheaply: nothing to do when nothing is hidden at all, and no push when
+  // the hidden set on screen is already right. Otherwise a node stays
+  // visible and pickable under a hidden tag or group, or hidden without
+  // one, until an unrelated resync (undo, a Tags-panel toggle) catches up.
+  const reconcileVisibility = useCallback(() => {
+    const scene = sceneRef.current
+    if (scene === null) return
+    const seeded = seedHiddenTagPathsFromRegistry(scene)
+    if (seeded.size === 0 && hiddenTagPaths.size === 0 && hiddenKeys.size === 0) return
+    if (seeded.size !== hiddenTagPaths.size || [...seeded].some((p) => !hiddenTagPaths.has(p))) {
+      setHiddenTagPaths(seeded)
+    }
+    pushUnionHidden(hiddenKeys, seeded, { onlyIfChanged: true })
+  }, [hiddenKeys, hiddenTagPaths, pushUnionHidden])
+  reconcileVisibilityRef.current = reconcileVisibility
+
+  const handleObjectInfoTagsChanged = useCallback(() => {
+    reconcileVisibility()
+    handleDocumentChanged()
+  }, [reconcileVisibility, handleDocumentChanged])
 
   // Delete a tag everywhere (undoable, kernel-side): unassigns it — and its
   // sub-tags — from every node and drops the registry entries. Geometry is
@@ -5336,9 +5391,9 @@ export default function App() {
     } catch (err: unknown) {
       return friendlyErrorText(err)
     }
-    handleDocumentChanged()
+    handleNameChanged()
     return null
-  }, [handleDocumentChanged])
+  }, [handleNameChanged])
 
   const doDeleteComponent = useCallback((id: bigint, name: string) => {
     const scene = sceneRef.current
@@ -5493,6 +5548,8 @@ export default function App() {
   const handleReparent = (nodes: NodeRef[], group: bigint | undefined) => {
     const ok = viewportApi.current?.runReparent(nodes, group)
     if (ok === true) {
+      // Moving a node into (or out of) a hidden group hides (or shows) it.
+      reconcileVisibility()
       setSelectedIds(nodes)
       setDocRev((r) => r + 1)
     }
@@ -6116,9 +6173,12 @@ export default function App() {
               scene={state.scene}
               docRev={docRev}
               selectedIds={selectedIds}
-              // Segments rebuilds a circle's chords, so this panel needs the
-              // repaint path like every other tray panel that edits geometry.
-              onDocumentChanged={refreshAfterPanelMutation}
+              // Segments rebuilds a circle's chords, so it needs the repaint
+              // path like every other tray panel that edits geometry; names
+              // change nothing drawn and skip the re-tessellation.
+              onNameChanged={handleNameChanged}
+              onGeometryChanged={refreshAfterPanelMutation}
+              onTagsChanged={handleObjectInfoTagsChanged}
               onSelectMany={handleReplaceSelection}
               onToast={handleToast}
             />

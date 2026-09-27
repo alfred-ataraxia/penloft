@@ -87,6 +87,11 @@ export interface HarnessDeps {
   toggleNodeHidden: (node: NodeRef) => void
   /** Whether `node`'s own key is in the app's hidden set. */
   isNodeHidden: (node: NodeRef) => boolean
+  /** Re-apply tag visibility after a tag assignment
+   * (`App.reconcileVisibility`) so a node given an already-hidden tag
+   * hides, as it does through Object Info. Optional so headless callers
+   * without tag state can omit it. */
+  reconcileVisibility?: () => void
   /**
    * Print (docs/design/printing.md §12): install a recording print host +
    * page sink so a spec can drive File ▸ Print… end to end without the OS
@@ -1014,9 +1019,10 @@ export interface HewTestHarness {
    * `setCamera` leaves `camera.matrixWorld`/`matrixWorldInverse` stale until
    * the next render traversal recomputes them, so projecting first would
    * silently use the previous pose in a script that never yields to the
-   * app's own render loop between `setCamera` and this call. Relies on the
-   * chromium project's pinned `deviceScaleFactor: 1` so CSS pixels index the
-   * framebuffer directly (WebGL's bottom-left origin is corrected here).
+   * app's own render loop between `setCamera` and this call. The projected
+   * CSS-pixel point is scaled to the drawing buffer's device pixels (the
+   * webkit project runs at `deviceScaleFactor: 2`) and WebGL's bottom-left
+   * origin is corrected here.
    */
   pixelColorAt(world: Vec3): { r: number; g: number; b: number } | null
 }
@@ -2033,6 +2039,7 @@ export function installTestHarness(deps: HarnessDeps): () => void {
 
     addNodeTag: (kind, id, path) => {
       act((s) => s.add_node_tag(kindNum(kind), BigInt(id), path))
+      deps.reconcileVisibility?.()
     },
 
     getNodeTags: (kind, id) =>
@@ -2207,13 +2214,17 @@ export function installTestHarness(deps: HarnessDeps): () => void {
       const frame = api.captureFrame()
       const proj = api.worldToScreen(world)
       if (proj.behind) return null
-      // floor, not round: proj.x/y are continuous CSS pixel coordinates
-      // where pixel index i covers [i, i+1) — floor is the standard
+      // proj.x/y are CSS pixels; the buffer is device pixels. Scale by the
+      // renderer's actual pixel ratio (buffer over CSS size) rather than
+      // devicePixelRatio, which the software-GL profile caps. floor, not
+      // round: pixel index i covers [i, i+1) — floor is the standard
       // coordinate-to-index conversion (round would bias half a pixel off).
-      const x = Math.floor(proj.x)
+      const sx = frame.cssWidth > 0 ? frame.width / frame.cssWidth : 1
+      const sy = frame.cssHeight > 0 ? frame.height / frame.cssHeight : 1
+      const x = Math.floor(proj.x * sx)
       // WebGL readPixels is bottom-left-origin; worldToScreen is top-left
       // (CSS/DOM convention) — flip here so callers stay in screen space.
-      const y = frame.height - 1 - Math.floor(proj.y)
+      const y = frame.height - 1 - Math.floor(proj.y * sy)
       if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) return null
       const idx = (y * frame.width + x) * 4
       return { r: frame.pixels[idx], g: frame.pixels[idx + 1], b: frame.pixels[idx + 2] }

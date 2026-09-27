@@ -38,7 +38,7 @@ With several things selected, Object Info shows the count, the selection's combi
 
 Tags are labels for slicing a model into toggleable categories — Structure, Hardware, Reference, whatever fits your project. Unlike groups, tags don't affect the model tree; an object can carry any number of tags no matter where it lives.
 
-- **Add a tag** in Object Info with the **+** button. Use `/` to nest: typing `Structure/Roof` creates (or reuses) a *Structure* parent with a *Roof* child.
+- **Add a tag** in Object Info with the **+** button. Use `/` to nest: typing `Structure/Roof` creates (or reuses) a *Structure* parent with a *Roof* child. Adding a tag that's currently hidden hides the item at once.
 - **The Tags panel** (View ▸ Tags, `⇧⌘T` / `Ctrl+Shift+T`) shows the resulting tree, with a count of tagged items on each row and an eye toggle that hides everything tagged at or under that path.
 - **Click a tag** to select everything that carries it (or a tag nested under it) — the same gesture as clicking a row in the Outliner, and the quickest way to grab a whole category to move, group, or re-tag it.
 - **Rename a tag** the way you rename a file: click the already-selected row a second time (a moment later, not a double-click), or double-click it, and its name opens for editing in place. Enter commits, Escape cancels. Only that segment changes — sub-tags and every item carrying the tag follow it, and the rename is undoable. A name that's already in use is refused.

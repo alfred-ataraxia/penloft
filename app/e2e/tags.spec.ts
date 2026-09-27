@@ -160,3 +160,43 @@ test('Tags panel: clicking a tag selects its items; double-click renames it in p
   await page.keyboard.press('Control+z')
   await expect.poll(async () => page.evaluate((id) => window.__hew_test!.getNodeTags('object', id), ids.b)).toEqual(['Hardware/Screws'])
 })
+
+test('Object Info: tagging with a hidden tag hides the node; removing it shows the node again', async ({ page }) => {
+  await setup(page)
+
+  // Box A carries 'Roof', which is hidden; box B carries nothing. A
+  // downward ray over each box's top is its visibility probe.
+  const ids = await page.evaluate(() => {
+    const h = window.__hew_test!
+    const a = h.drawBox([0, 0, 0], [1, 1, 0], 1)
+    const b = h.drawBox([3, 0, 0], [4, 1, 0], 1)
+    h.addNodeTag('object', a, ['Roof'])
+    h.toggleTagHidden(['Roof'])
+    return { a, b }
+  })
+  const pickable = (x: number) =>
+    page.evaluate((px) => window.__hew_test!.pickFace([px, 0.5, 5], [0, 0, -1]) !== null, x)
+  expect(await pickable(0.5)).toBe(false)
+  expect(await pickable(3.5)).toBe(true)
+
+  // Add the hidden tag to B through Object Info's own field: B must hide
+  // at once, not on the next unrelated visibility resync.
+  await page.evaluate((b) => window.__hew_test!.selectNodes([{ kind: 'object', id: b }]), ids.b)
+  await page.getByRole('button', { name: 'Add tag', exact: true }).click()
+  await page.keyboard.type('Roof')
+  await page.keyboard.press('Enter')
+  await expect.poll(() => pickable(3.5)).toBe(false)
+
+  // Remove it from A through the chip's ×: A carries no hidden tag now.
+  await page.evaluate((a) => window.__hew_test!.selectNodes([{ kind: 'object', id: a }]), ids.a)
+  await page.getByRole('button', { name: 'Remove tag Roof' }).click()
+  await expect.poll(() => pickable(0.5)).toBe(true)
+  expect(await pickable(3.5)).toBe(false)
+
+  // The harness's own addNodeTag follows the same rule.
+  await page.evaluate(() => {
+    const h = window.__hew_test!
+    h.addNodeTag('object', h.drawBox([6, 0, 0], [7, 1, 0], 1), ['Roof'])
+  })
+  expect(await pickable(6.5)).toBe(false)
+})

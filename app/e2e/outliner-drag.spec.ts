@@ -106,3 +106,17 @@ for (const theme of ['light', 'dark'] as const) {
     await page.mouse.up()
   })
 }
+
+test('an object dragged into a hidden group hides with it', async ({ page }) => {
+  const ids = await scene(page)
+  await page.evaluate((g) => window.__hew_test!.toggleNodeHidden({ kind: 'group', id: g }), ids.g)
+  const pickableA = () =>
+    page.evaluate(() => window.__hew_test!.pickFace([0.5, 0.5, 5], [0, 0, -1]) !== null)
+  expect(await pickableA()).toBe(true)
+
+  await dragRow(page, `object:${ids.a}`, `group:${ids.g}`)
+  const members = await page.evaluate((g) => window.__hew_test!.getGroupMembers(g), ids.g)
+  expect(members.map((m) => m.id)).toContain(ids.a)
+  // Now inside a hidden group: invisible and unpickable at once.
+  await expect.poll(pickableA).toBe(false)
+})

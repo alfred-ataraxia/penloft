@@ -101,7 +101,9 @@ describe('ObjectInfoPanel', () => {
         scene={makeScene()}
         docRev={0}
         selectedIds={[]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -118,7 +120,9 @@ describe('ObjectInfoPanel', () => {
           { kind: 'object', id: 2n },
           { kind: 'object', id: 3n },
         ]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -130,6 +134,7 @@ describe('ObjectInfoPanel', () => {
     const add_node_tag_many = vi.fn()
     const remove_node_tag_many = vi.fn()
     const onDocumentChanged = vi.fn()
+    const onTagsChanged = vi.fn()
     const scene = makeScene({
       node_tags: (_kind: number, id: bigint) => (id === 1n ? ['Hardware', 'Oak'] : id === 2n ? ['Hardware', 'Pine'] : ['Hardware']),
       add_node_tag_many,
@@ -144,7 +149,9 @@ describe('ObjectInfoPanel', () => {
           { kind: 'group', id: 2n },
           { kind: 'object', id: 3n },
         ]}
-        onDocumentChanged={onDocumentChanged}
+        onNameChanged={onDocumentChanged}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={onTagsChanged}
         onSelectMany={vi.fn()}
       />,
     )
@@ -164,13 +171,17 @@ describe('ObjectInfoPanel', () => {
     expect(Array.from(kinds as Uint8Array)).toEqual([0, 1, 0])
     expect(Array.from(ids as BigUint64Array)).toEqual([1n, 2n, 3n])
     expect(segments).toEqual(['Walnut', 'Legs'])
-    expect(onDocumentChanged).toHaveBeenCalledTimes(1)
+    // Tag edits take the tags path (visibility re-push + bookkeeping), not
+    // the bare bookkeeping one — a hidden tag must hide its node at once.
+    expect(onTagsChanged).toHaveBeenCalledTimes(1)
+    expect(onDocumentChanged).not.toHaveBeenCalled()
 
     // × on Hardware → one remove_node_tag_many over the whole selection.
     fireEvent.click(screen.getByRole('button', { name: 'Remove tag Hardware from all selected' }))
     expect(remove_node_tag_many).toHaveBeenCalledTimes(1)
     expect(remove_node_tag_many.mock.calls[0][2]).toEqual(['Hardware'])
-    expect(onDocumentChanged).toHaveBeenCalledTimes(2)
+    expect(onTagsChanged).toHaveBeenCalledTimes(2)
+    expect(onDocumentChanged).not.toHaveBeenCalled()
   })
 
   it('shows the type label "Object" for an object node', () => {
@@ -183,7 +194,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -201,7 +214,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -224,7 +239,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 8n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -255,7 +272,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 8n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -274,7 +293,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'instance', id: 4n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -294,7 +315,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'instance', id: 4n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -319,7 +342,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'instance', id: 4n }]}
-        onDocumentChanged={onDocumentChanged}
+        onNameChanged={onDocumentChanged}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -344,7 +369,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'instance', id: 4n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={onSelectMany}
       />,
     )
@@ -371,7 +398,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'instance', id: 4n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -397,7 +426,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -409,7 +440,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 2n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -439,7 +472,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'instance', id: 4n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -451,7 +486,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'instance', id: 5n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -483,7 +520,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'instance', id: 4n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -495,7 +534,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'instance', id: 5n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -515,7 +556,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -532,7 +575,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -548,7 +593,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'group', id: 2n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -568,7 +615,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -582,18 +631,22 @@ describe('ObjectInfoPanel', () => {
       object_solid: () => true,
     })
     const onDocumentChanged = vi.fn()
+    const onTagsChanged = vi.fn()
     render(
       <ObjectInfoPanel
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={onDocumentChanged}
+        onNameChanged={onDocumentChanged}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={onTagsChanged}
         onSelectMany={vi.fn()}
       />,
     )
     fireEvent.click(screen.getByTitle('Remove tag'))
     expect((scene as any).remove_node_tag).toHaveBeenCalledWith(0, 1n, ['Walls'])
-    expect(onDocumentChanged).toHaveBeenCalled()
+    expect(onTagsChanged).toHaveBeenCalledTimes(1)
+    expect(onDocumentChanged).not.toHaveBeenCalled()
   })
 
   it('has no "No tags" boilerplate — empty state is just the "+" button', () => {
@@ -606,7 +659,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -623,12 +678,15 @@ describe('ObjectInfoPanel', () => {
       object_solid: () => true,
     })
     const onDocumentChanged = vi.fn()
+    const onTagsChanged = vi.fn()
     render(
       <ObjectInfoPanel
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={onDocumentChanged}
+        onNameChanged={onDocumentChanged}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={onTagsChanged}
         onSelectMany={vi.fn()}
       />,
     )
@@ -638,7 +696,8 @@ describe('ObjectInfoPanel', () => {
     fireEvent.change(tagInput, { target: { value: 'Mech/HVAC' } })
     fireEvent.keyDown(tagInput, { key: 'Enter' })
     expect((scene as any).add_node_tag).toHaveBeenCalledWith(0, 1n, ['Mech', 'HVAC'])
-    expect(onDocumentChanged).toHaveBeenCalled()
+    expect(onTagsChanged).toHaveBeenCalledTimes(1)
+    expect(onDocumentChanged).not.toHaveBeenCalled()
     // Field closes after commit; the "+" affordance returns.
     expect(screen.queryByPlaceholderText('Structure/Roof')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add tag' })).toBeInTheDocument()
@@ -655,7 +714,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -683,7 +744,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -710,7 +773,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -727,12 +792,15 @@ describe('ObjectInfoPanel', () => {
       object_solid: () => true,
     })
     const onDocumentChanged = vi.fn()
+    const onGeometryChanged = vi.fn()
     render(
       <ObjectInfoPanel
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'object', id: 1n }]}
-        onDocumentChanged={onDocumentChanged}
+        onNameChanged={onDocumentChanged}
+        onGeometryChanged={onGeometryChanged}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -741,6 +809,8 @@ describe('ObjectInfoPanel', () => {
     fireEvent.blur(nameInput)
     expect((scene as any).set_node_name).toHaveBeenCalledWith(0, 1n, 'Pillar')
     expect(onDocumentChanged).toHaveBeenCalled()
+    // A name changes nothing drawn — no re-tessellation.
+    expect(onGeometryChanged).not.toHaveBeenCalled()
   })
 
   it('shows "Sketch" + its positional label for a sketch selection, with no help boilerplate', () => {
@@ -752,7 +822,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'sketch-island', id: 120n, sketch: 20n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -792,7 +864,9 @@ describe('ObjectInfoPanel', () => {
           })}
           docRev={0}
           selectedIds={[{ kind: 'object', id: 1n }]}
-          onDocumentChanged={vi.fn()}
+          onNameChanged={vi.fn()}
+          onGeometryChanged={vi.fn()}
+          onTagsChanged={vi.fn()}
           onSelectMany={vi.fn()}
         />,
       )
@@ -813,7 +887,9 @@ describe('ObjectInfoPanel', () => {
         })}
         docRev={0}
         selectedIds={[{ kind: 'sketch-island', id: 110n, sketch: 10n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -835,7 +911,9 @@ describe('ObjectInfoPanel', () => {
           { kind: 'object', id: 1n },
           { kind: 'object', id: 2n },
         ]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -864,7 +942,9 @@ describe('ObjectInfoPanel', () => {
           scene={scene}
           docRev={0}
           selectedIds={[{ kind: 'object', id: 1n }]}
-          onDocumentChanged={vi.fn()}
+          onNameChanged={vi.fn()}
+          onGeometryChanged={vi.fn()}
+          onTagsChanged={vi.fn()}
           onSelectMany={vi.fn()}
         />,
       ),
@@ -915,7 +995,9 @@ describe('ObjectInfoPanel', () => {
         scene={curveScene({ geom: new Float64Array([0, 0, 0, 1]), facets: 24 })}
         docRev={0}
         selectedIds={CURVE_SELECTION}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -929,7 +1011,9 @@ describe('ObjectInfoPanel', () => {
         scene={curveScene({ geom: undefined, facets: 6 })}
         docRev={0}
         selectedIds={CURVE_SELECTION}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -942,12 +1026,15 @@ describe('ObjectInfoPanel', () => {
     const scene = curveScene({ geom: new Float64Array([0, 0, 0, 1]), facets: 24 })
     const onSelectMany = vi.fn()
     const onDocumentChanged = vi.fn()
+    const onGeometryChanged = vi.fn()
     render(
       <ObjectInfoPanel
         scene={scene}
         docRev={0}
         selectedIds={CURVE_SELECTION}
-        onDocumentChanged={onDocumentChanged}
+        onNameChanged={onDocumentChanged}
+        onGeometryChanged={onGeometryChanged}
+        onTagsChanged={vi.fn()}
         onSelectMany={onSelectMany}
       />,
     )
@@ -964,7 +1051,9 @@ describe('ObjectInfoPanel', () => {
     expect(onSelectMany).toHaveBeenCalledWith([
       { kind: 'sketch-curve', id: 200n, sketch: 5n },
     ])
-    expect(onDocumentChanged).toHaveBeenCalled()
+    // A re-facet changes drawn geometry: the repaint path, not bare bookkeeping.
+    expect(onGeometryChanged).toHaveBeenCalledTimes(1)
+    expect(onDocumentChanged).not.toHaveBeenCalled()
   })
 
   it('Escape reverts the Segments field to the current facet count without committing', () => {
@@ -974,7 +1063,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={CURVE_SELECTION}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -996,7 +1087,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={CURVE_SELECTION}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -1019,7 +1112,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={CURVE_SELECTION}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
         onToast={onToast}
       />,
@@ -1052,7 +1147,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={CURVE_SELECTION}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={onSelectMany}
         onToast={onToast}
       />,
@@ -1088,7 +1185,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={CURVE_SELECTION}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
         onToast={onToast}
       />,
@@ -1116,7 +1215,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={[{ kind: 'sketch-curve', id: 3n, sketch: 5n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -1128,7 +1229,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={1}
         selectedIds={[{ kind: 'sketch-curve', id: 3n, sketch: 6n }]}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )
@@ -1146,7 +1249,9 @@ describe('ObjectInfoPanel', () => {
         scene={scene}
         docRev={0}
         selectedIds={CURVE_SELECTION}
-        onDocumentChanged={vi.fn()}
+        onNameChanged={vi.fn()}
+        onGeometryChanged={vi.fn()}
+        onTagsChanged={vi.fn()}
         onSelectMany={vi.fn()}
       />,
     )

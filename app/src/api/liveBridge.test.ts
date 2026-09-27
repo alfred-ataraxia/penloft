@@ -83,6 +83,7 @@ describe('installLiveBridge', () => {
   // a bare `vi.fn()` is `Mock<Constructable | Procedure>`, which does not
   // satisfy `LiveBridgeDeps.reconcile`'s plain `() => void`.
   let reconcile: Mock<() => void>
+  let reconcileVisibility: Mock<() => void>
   let viewportApi: {
     refreshScene: ReturnType<typeof vi.fn>
     setCamera: ReturnType<typeof vi.fn>
@@ -124,10 +125,12 @@ describe('installLiveBridge', () => {
       zoomExtents: vi.fn(),
     }
     reconcile = vi.fn<() => void>()
+    reconcileVisibility = vi.fn<() => void>()
     deps = {
       getScene: () => scene as unknown as Scene,
       getViewportApi: () => viewportApi as unknown as ViewportApi,
       reconcile,
+      reconcileVisibility,
     }
   })
 
@@ -271,6 +274,25 @@ describe('installLiveBridge', () => {
     expect(reconcile).not.toHaveBeenCalled()
   })
 
+  it('re-applies tag visibility after a successful mutating dispatch, after the refresh', async () => {
+    // hew.tag.assign can give a node an already-hidden tag; the viewport
+    // refresh only re-applies the hidden set it already had.
+    installLiveBridge(deps)
+    await flush()
+    fire('hew://api-connection-open', { connId: 3 })
+    scene.api_dispatch.mockReturnValue('{"jsonrpc":"2.0","id":2,"result":{}}')
+    fire('hew://api-frame', {
+      connId: 3,
+      frame: '{"jsonrpc":"2.0","id":2,"method":"hew.tag.assign","params":{}}',
+    })
+    await vi.waitFor(() => {
+      expect(reconcileVisibility).toHaveBeenCalledTimes(1)
+    })
+    expect(refreshScene.mock.invocationCallOrder[0]).toBeLessThan(
+      reconcileVisibility.mock.invocationCallOrder[0],
+    )
+  })
+
   it('falls back to reconcile() when no Viewport is mounted', async () => {
     deps.getViewportApi = () => null
     installLiveBridge(deps)
@@ -297,6 +319,7 @@ describe('installLiveBridge', () => {
     })
     await flush()
     expect(refreshScene).not.toHaveBeenCalled()
+    expect(reconcileVisibility).not.toHaveBeenCalled()
   })
 
   it('does not refresh after a refused mutating command', async () => {
@@ -312,6 +335,7 @@ describe('installLiveBridge', () => {
     })
     await flush()
     expect(refreshScene).not.toHaveBeenCalled()
+    expect(reconcileVisibility).not.toHaveBeenCalled()
   })
 
   it('uninstall stops routing further events', async () => {
@@ -503,6 +527,9 @@ describe('installLiveBridge', () => {
       expect(activateScene).toHaveBeenCalledWith(7)
       // Never a viewport call — activation is not a camera directive.
       expect(viewportApi.setCamera).not.toHaveBeenCalled()
+      // The activation applies the Scene's hidden nodes and tags itself; a
+      // tag reconcile first would push against the pre-activation hides.
+      expect(reconcileVisibility).not.toHaveBeenCalled()
     })
 
     it('is a silent no-op when activateScene is not wired', async () => {
@@ -519,6 +546,8 @@ describe('installLiveBridge', () => {
           frame: '{"jsonrpc":"2.0","id":2,"method":"hew.scenes.apply","params":{"id":"scene_7"}}',
         }),
       ).not.toThrow()
+      // No activation to own visibility here, so tags are still reconciled.
+      expect(reconcileVisibility).toHaveBeenCalledTimes(1)
     })
   })
 })

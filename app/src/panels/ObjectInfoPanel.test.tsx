@@ -28,7 +28,9 @@ function makeScene(overrides: Record<string, any> = {}): WasmScene {
 
 const baseProps = {
   docRev: 0,
-  onDocumentChanged: vi.fn(),
+  onNameChanged: vi.fn(),
+  onGeometryChanged: vi.fn(),
+  onTagsChanged: vi.fn(),
   onSelectMany: vi.fn(),
 }
 

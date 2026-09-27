@@ -756,6 +756,17 @@ below.
   offset for analytic curved walls — see Shipped). The one flat-path case
   still refused is pushing an outer face edge into or past one of its own
   holes: the deferred P4 hole-edge case, revisited with true circles
+- **Editable polygon side count after the fact.** A drawn circle's
+  Segments can be changed in Object Info at any time (the chain keeps its
+  exact circle and only its chords are rebuilt), but a regular polygon's
+  side count is settable only while drawing or in its post-click `Ns`
+  window. Once committed, a polygon's sides are its real geometry and
+  Object Info offers no Sides field, so a 48-sided polygon cannot be
+  changed back. Planned: a Sides field for a whole, untouched regular
+  polygon (its centre is already kept, so the rebuild has an anchor),
+  with the same refusals as circle re-faceting. It stays a polygon at any
+  count: sides remain hard edges when extruded, unlike a circle's smooth
+  wall
 
 ### Longer-term
 
