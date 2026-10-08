@@ -31,6 +31,7 @@ import { UnsavedChangesDialog, type UnsavedChangesDecision } from './panels/Unsa
 import { parseHistoryEntries } from './panels/changesModel'
 import { ToolRail } from './panels/ToolRail'
 import { TouchRail } from './panels/TouchRail'
+import { Keypad } from './panels/Keypad'
 import { TrayHideRow, TrayShowTab } from './panels/TrayToggle'
 import { ContextualDock } from './panels/ContextualDock'
 import { nextSelection, mergeSelection, type SelectMode, canBoolean as canBooleanHelper, canBooleanInComponent, canMakeComponent, canPlaceInstance, canExplodeInstance, canMakeUnique, canGroup as canGroupHelper, canUngroup as canUngroupHelper, nodeEq, nodeKey, nodeKindToNumber, nodeRefFromJs, resolveLabel, entityLabel, buildTreeIndexMap, pruneDeadSelection, structuralSelection, type NodeRef } from './panels/treeModel'
@@ -5642,7 +5643,7 @@ export default function App() {
         <strong>Penloft</strong><span>{activeTool}</span><span style={{ flex: 1, color: 'var(--text-faint)' }}>Draw with pen · Navigate with fingers</span>
         <a href="https://github.com/alfred-ataraxia/penloft" target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>Hew fork · AGPL source</a>
         <button type="button" onClick={handleRedo} style={{ minWidth: 52, minHeight: 52 }}>Redo</button>
-        <button type="button" onClick={() => menuActionRef.current('file-export-stl')} style={{ minWidth: 52, minHeight: 52 }}>Export STL</button>
+        <button type="button" onClick={() => handleExportFormat('stl', stlSegmentsRef.current)} style={{ minWidth: 52, minHeight: 52 }}>Export STL</button>
       </header> : <MenuBar
         name={documentName(docSession)}
         saveState={saveStateLabel(docSession, nowTick)}
@@ -5911,7 +5912,7 @@ export default function App() {
               can't see moves into its own children). display:contents keeps
               them out of the layout while still catching the bubbled events. */}
           <div style={{ display: 'contents' }} onPointerOver={() => setInferenceInfo(null)}>
-            <MeasurementBox toolName={toolName} value={measurement} frozen={measurementFrozen} />
+            {touchMode ? <Keypad value={measurement} onKey={(key) => viewportApi.current?.measurementKey(key)} /> : <MeasurementBox toolName={toolName} value={measurement} frozen={measurementFrozen} />}
             <ViewportHUD
               onSelectView={(view: StandardView) => viewportApi.current?.setStandardView(view)}
               onOrbit={() => activateTool('Orbit')}
