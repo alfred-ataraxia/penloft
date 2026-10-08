@@ -132,6 +132,13 @@ export class SnapService {
   private lastSnap: Snap | null = null
   /** Precision mode — see `setPrecision`. */
   private precision = false
+  private pointerType = ''
+
+  setPointerType(pointerType: string): void {
+    if (this.pointerType === pointerType) return
+    this.pointerType = pointerType
+    this.clearHold()
+  }
 
   constructor(scene: Scene) {
     this.scene = scene
@@ -291,7 +298,7 @@ export class SnapService {
         : null
 
     // Coarse-pointer (touch) widening — see COARSE_POINTER_APERTURE_SCALE.
-    const apertureScale = apertureScaleOverride ?? (isCoarsePointer() ? COARSE_POINTER_APERTURE_SCALE : 1)
+    const apertureScale = apertureScaleOverride ?? (this.pointerType === 'pen' ? 6 / SNAP_RADIUS_PX : this.pointerType === 'touch' ? 18 / SNAP_RADIUS_PX : this.pointerType === 'mouse' ? 1 : isCoarsePointer() ? COARSE_POINTER_APERTURE_SCALE : 1)
 
     // 1. Acquire at the normal radius. Under `facesOnly`, a non-`on-face`
     //    winner is discarded here (treated as no candidate at all) so it can

@@ -26,6 +26,19 @@ function fakeScene(): Scene {
   return { snap: vi.fn(() => undefined) } as unknown as Scene
 }
 
+describe('SnapService — pointer apertures', () => {
+  it('uses 6px for pen and 18px for touch regardless of the primary device', () => {
+    const scene = fakeScene()
+    const svc = new SnapService(scene)
+    const snapFn = scene.snap as unknown as ReturnType<typeof vi.fn>
+    for (const [pointer, radius] of [['pen', 6], ['touch', 18], ['mouse', 8]] as const) {
+      svc.setPointerType(pointer)
+      svc.resolve(DOWN, 800, PERSPECTIVE_45)
+      expect(snapFn.mock.calls.at(-1)?.[6]).toBeCloseTo(pixelRadiusToAperture(radius, 800, 45))
+    }
+  })
+})
+
 describe('SnapService — fallback tier', () => {
   it('without a constraintPlane, falls back to ground (kind "ground")', () => {
     const svc = new SnapService(fakeScene())

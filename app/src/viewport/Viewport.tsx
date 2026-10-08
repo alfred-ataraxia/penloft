@@ -8289,6 +8289,7 @@ export default function Viewport({
 
     // ------------------------------------------------------------------ pointer move (snap + cue)
     function onPointerMove(ev: PointerEvent): void {
+      snapService.setPointerType(ev.pointerType)
       if (ev.pointerType === 'touch' && !readOnlyRef.current) return
       // Capture every raw move first (before any early-return) so low-level
       // replay reproduces the whole stack, camera-nav moves included.
@@ -8691,6 +8692,7 @@ export default function Viewport({
     }
 
     function onPointerDown(ev: PointerEvent): void {
+      snapService.setPointerType(ev.pointerType)
       if (ev.pointerType === 'touch' && !readOnlyRef.current) return
       recordPointerInput('pointerdown', ev)
       // Seed the mid-drag switch origin at the press too (a Shift pressed
