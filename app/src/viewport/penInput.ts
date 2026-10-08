@@ -37,3 +37,26 @@ export function installPenInput(parent: HTMLElement, canvas: HTMLCanvasElement, 
     window.removeEventListener('blur', blur)
   }
 }
+
+export function installTouchTwist(parent: HTMLElement, canvas: HTMLCanvasElement, twist: (radians: number) => void): () => void {
+  const points = new Map<number, { x: number; y: number }>()
+  let previous: number | null = null
+  function capture(ev: PointerEvent): void {
+    if (ev.target !== canvas || ev.pointerType !== 'touch') return
+    if (ev.type === 'pointerup' || ev.type === 'pointercancel') points.delete(ev.pointerId)
+    else if (ev.type === 'pointerdown' || points.has(ev.pointerId)) points.set(ev.pointerId, { x: ev.clientX, y: ev.clientY })
+    if (points.size !== 2) { previous = null; return }
+    const [a, b] = [...points.values()]
+    const angle = Math.atan2(b.y - a.y, b.x - a.x)
+    if (previous !== null && ev.type === 'pointermove') twist(Math.atan2(Math.sin(angle - previous), Math.cos(angle - previous)))
+    previous = angle
+  }
+  function reset(): void { points.clear(); previous = null }
+  const events = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'] as const
+  for (const event of events) parent.addEventListener(event, capture, true)
+  window.addEventListener('blur', reset)
+  return () => {
+    for (const event of events) parent.removeEventListener(event, capture, true)
+    window.removeEventListener('blur', reset)
+  }
+}

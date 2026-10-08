@@ -92,8 +92,8 @@ import {
 } from './math'
 import { dynamicClipPlanes, groundHitIsUsable, targetAtDepth, zoomFloorFor } from './cameraDepth'
 import { CameraRig, type Projection, isBehindCamera } from './cameraRig'
-import { installPenInput } from './penInput'
-import { setPenPriority } from './orbitDragSwitch'
+import { installPenInput, installTouchTwist } from './penInput'
+import { setPenPriority, twistOrbit } from './orbitDragSwitch'
 import { fovReadoutText, activeCameraToolForName } from './fovReadout'
 import { parseFovEntry } from './fovUnits'
 import {
@@ -8691,7 +8691,11 @@ export default function Viewport({
       return best
     }
 
+    let penDrag: { id: number; x: number; y: number; tool: string } | null = null
     function onPointerDown(ev: PointerEvent): void {
+      if (ev.pointerType === 'pen' && ev.type === 'pointerdown' && ev.button === 0 && ['Line', 'Rectangle', 'Push/Pull'].includes(toolController.activeToolName)) {
+        penDrag = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, tool: toolController.activeToolName }
+      }
       snapService.setPointerType(ev.pointerType)
       if (ev.pointerType === 'touch' && !readOnlyRef.current) return
       recordPointerInput('pointerdown', ev)
@@ -9320,6 +9324,15 @@ export default function Viewport({
     // express that gesture), dispatched first and independently of the
     // Select-only `dragMove`/`marqueeDrag` state below.
     function onPointerUp(ev: PointerEvent): void {
+      if (ev.pointerType === 'pen' && penDrag?.id === ev.pointerId) {
+        const drag = penDrag
+        penDrag = null
+        // ponytail: reuse each tool's second-click commit for pen drags; taps retain click-move-click.
+        if (Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y) > 4 && toolController.activeToolName === drag.tool && toolHasArmedGesture(toolController.activeTool)) {
+          onPointerMove(ev)
+          onPointerDown(ev)
+        }
+      }
       if (ev.pointerType === 'touch' && !readOnlyRef.current) return
       recordPointerInput('pointerup', ev)
       if (ev.button !== 0) return
@@ -9552,9 +9565,11 @@ export default function Viewport({
     // onFovDragPointerDownCapture's doc for why registering on the canvas
     // wouldn't run early enough to beat OrbitControls' own listener).
     const disposePenInput = installPenInput(el, renderer.domElement, () => {
+      penDrag = null
       toolController.activeTool.cancel()
       scheduleRender()
     }, (active) => setPenPriority(controls, active))
+    const disposeTouchTwist = installTouchTwist(el, renderer.domElement, (angle) => twistOrbit(controls, angle))
     el.addEventListener('pointerdown', onFovDragPointerDownCapture, true)
     el.addEventListener('wheel', onFovWheelCapture, { capture: true, passive: false })
     // Pivot-at-cursor-depth (cameraDepth.ts): capture phase so these run
@@ -9597,6 +9612,7 @@ export default function Viewport({
     return () => {
       renderScheduler.cancel()
       disposePenInput()
+      disposeTouchTwist()
       document.removeEventListener('visibilitychange', onVisibilityChange)
       // A Scene camera tween and its settle timer outlive nothing: cancel
       // both so no post-unmount frame or callback fires into a torn-down

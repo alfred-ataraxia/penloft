@@ -53,6 +53,14 @@ export function setPenPriority(controls: OrbitControls, active: boolean): void {
   if (active) stopInertia(controls)
 }
 
+export function twistOrbit(controls: OrbitControls, radians: number): void {
+  const c = internals(controls)
+  if (c === null || !Number.isFinite(radians)) return
+  // ponytail: share the already-pinned OrbitControls internals, no second camera gesture engine.
+  c._sphericalDelta.theta -= radians
+  controls.update()
+}
+
 /** The private surface, as a structural type — see the module doc. */
 interface OrbitControlsInternals {
   state: number

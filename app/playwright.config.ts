@@ -89,6 +89,15 @@ export default defineConfig({
 
   projects: [
     {
+      name: 'tablet',
+      testMatch: '**/penloft.spec.ts',
+      use: {
+        browserName: 'chromium', viewport: { width: 1194, height: 834 },
+        hasTouch: true, isMobile: true, deviceScaleFactor: 1,
+        launchOptions: { executablePath: '/usr/bin/chromium', args: SWIFTSHADER_ARGS },
+      },
+    },
+    {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],

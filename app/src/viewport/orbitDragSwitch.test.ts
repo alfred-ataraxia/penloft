@@ -12,6 +12,7 @@ import {
   stopInertia,
   setPreciseOrbit,
   forceBaseAfterPress,
+  twistOrbit,
 } from './orbitDragSwitch'
 
 /** A stand-in with exactly OrbitControls' private drag surface. */
@@ -40,6 +41,18 @@ describe('orbitDragSwitch — the installed OrbitControls still has the shape th
     expect((controls as unknown as { state: number }).state).toBe(ORBIT_STATE.NONE)
     controls.dispose()
   })
+})
+
+it('applies a touch twist as camera azimuth, leaving its target and distance intact', () => {
+  const camera = new PerspectiveCamera()
+  camera.position.set(5, 4, 8)
+  const controls = new OrbitControls(camera, document.createElement('canvas'))
+  controls.enableDamping = false
+  const before = controls.getAzimuthalAngle(), distance = controls.getDistance()
+  twistOrbit(controls, Math.PI / 6)
+  expect(controls.getAzimuthalAngle() - before).toBeCloseTo(-Math.PI / 6)
+  expect(controls.getDistance()).toBeCloseTo(distance)
+  controls.dispose()
 })
 
 describe('orbitDragState', () => {

@@ -1,11 +1,31 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
-import { installPenInput } from './penInput'
+import { installPenInput, installTouchTwist } from './penInput'
 import { PerspectiveCamera, TOUCH } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { setPenPriority } from './orbitDragSwitch'
 
 afterEach(() => { vi.useRealTimers(); document.body.replaceChildren() })
+
+it('turns a two-finger twist into an angle and resets on cancellation', () => {
+  const parent = document.createElement('div'), canvas = document.createElement('canvas')
+  parent.append(canvas)
+  const twist = vi.fn()
+  const cleanup = installTouchTwist(parent, canvas, twist)
+  const send = (type: string, id: number, x: number, y: number) => {
+    const ev = new Event(type, { bubbles: true })
+    Object.assign(ev, { pointerType: 'touch', pointerId: id, clientX: x, clientY: y })
+    canvas.dispatchEvent(ev)
+  }
+  send('pointerdown', 1, 0, 0); send('pointerdown', 2, 10, 0)
+  send('pointermove', 2, 0, 10)
+  expect(twist).toHaveBeenLastCalledWith(Math.PI / 2)
+  send('pointercancel', 2, 0, 10)
+  twist.mockClear()
+  send('pointermove', 1, 0, 5)
+  expect(twist).not.toHaveBeenCalled()
+  cleanup()
+})
 
 it('disables single-finger orbit during pen contact and restores it after release or cancel', () => {
   const canvas = document.createElement('canvas')
