@@ -1,3 +1,7 @@
+# Penloft
+
+Penloft is a stylus-first tablet PWA fork of [Hew](https://github.com/hew3d/hew). The Hew geometry kernel and upstream authorship are preserved under AGPL-3.0-only. Tablet input is experimental; Galaxy Tab hardware validation is still required. [Source](https://github.com/alfred-ataraxia/penloft).
+
 <p align="center">
   <img src="brand/hew-lockup-outlined.svg" alt="Hew" width="360">
 </p>
