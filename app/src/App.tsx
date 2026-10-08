@@ -969,7 +969,7 @@ export default function App() {
   // dirty mark live.
   useEffect(() => {
     const title = deriveTitle(docSession)
-    document.title = title
+    document.title = isTauri ? title : title.replace(/ — Hew$/, ' - Penloft')
     if (isTauri) {
       import('@tauri-apps/api/core').then(({ invoke }) => {
         invoke('set_window_title', { title }).catch(() => { /* ignore */ })

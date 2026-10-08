@@ -912,7 +912,8 @@ describe('savedLine', () => {
 
   it('falls back to an absolute date past 30 days', () => {
     const i = { ...item, meta: { savedAt: new Date(NOW - 40 * 24 * 60 * 60 * 1000).toISOString() } }
-    expect(savedLine(i, NOW)).toMatch(/Saved [A-Z][a-z]{2} \d{1,2}, \d{4}/)
+    const expected = new Date(i.meta.savedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    expect(savedLine(i, NOW)).toBe(`Saved ${expected}`)
   })
 
   it('reports an unknown date when neither savedAt nor mtimeMs is usable', () => {

@@ -2514,6 +2514,12 @@ describe('App — autosave arm/disarm (recovery-snapshot timer, Lane F adversari
   })
 })
 
+it('brands the web document title as Penloft without a long dash', async () => {
+  await renderAndLoad()
+  expect(document.title).toMatch(/ - Penloft$/)
+  expect(document.title).not.toContain('—')
+})
+
 describe('App — Lane C: dirty is derived from the kernel saved mark', () => {
   // mockScene.at_saved_mark defaults to a static `false` (see its own doc
   // comment above) — mirroring the OLD unconditional "any mutation dirties"
