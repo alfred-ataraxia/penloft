@@ -93,6 +93,7 @@ import {
 import { dynamicClipPlanes, groundHitIsUsable, targetAtDepth, zoomFloorFor } from './cameraDepth'
 import { CameraRig, type Projection, isBehindCamera } from './cameraRig'
 import { installPenInput } from './penInput'
+import { setPenPriority } from './orbitDragSwitch'
 import { fovReadoutText, activeCameraToolForName } from './fovReadout'
 import { parseFovEntry } from './fovUnits'
 import {
@@ -8287,6 +8288,7 @@ export default function Viewport({
 
     // ------------------------------------------------------------------ pointer move (snap + cue)
     function onPointerMove(ev: PointerEvent): void {
+      if (ev.pointerType === 'touch' && !readOnlyRef.current) return
       // Capture every raw move first (before any early-return) so low-level
       // replay reproduces the whole stack, camera-nav moves included.
       recordPointerInput('pointermove', ev)
@@ -8688,6 +8690,7 @@ export default function Viewport({
     }
 
     function onPointerDown(ev: PointerEvent): void {
+      if (ev.pointerType === 'touch' && !readOnlyRef.current) return
       recordPointerInput('pointerdown', ev)
       // Seed the mid-drag switch origin at the press too (a Shift pressed
       // before the first move must re-seed at the press point, not at
@@ -9314,6 +9317,7 @@ export default function Viewport({
     // express that gesture), dispatched first and independently of the
     // Select-only `dragMove`/`marqueeDrag` state below.
     function onPointerUp(ev: PointerEvent): void {
+      if (ev.pointerType === 'touch' && !readOnlyRef.current) return
       recordPointerInput('pointerup', ev)
       if (ev.button !== 0) return
       // Closes the press counted in onPointerDown. Recorded before any of the
@@ -9547,7 +9551,7 @@ export default function Viewport({
     const disposePenInput = installPenInput(el, renderer.domElement, () => {
       toolController.activeTool.cancel()
       scheduleRender()
-    })
+    }, (active) => setPenPriority(controls, active))
     el.addEventListener('pointerdown', onFovDragPointerDownCapture, true)
     el.addEventListener('wheel', onFovWheelCapture, { capture: true, passive: false })
     // Pivot-at-cursor-depth (cameraDepth.ts): capture phase so these run

@@ -1,15 +1,16 @@
-export function installPenInput(parent: HTMLElement, canvas: HTMLCanvasElement, cancel: () => void): () => void {
+export function installPenInput(parent: HTMLElement, canvas: HTMLCanvasElement, cancel: () => void, priority: (active: boolean) => void = () => {}): () => void {
   const pens = new Set<number>()
   const rejected = new Set<number>()
   let blockedUntil = 0
   function capture(ev: PointerEvent): void {
     if (ev.target !== canvas) return
     if (ev.pointerType === 'pen') {
-      if (ev.type === 'pointerdown') pens.add(ev.pointerId)
+      if (ev.type === 'pointerdown') { pens.add(ev.pointerId); priority(true) }
       if (ev.type === 'pointerup' || ev.type === 'pointercancel' || ev.type === 'lostpointercapture') {
         if (pens.delete(ev.pointerId)) {
           // ponytail: fixed 300ms cooldown; tune on real tablets before making it configurable.
           blockedUntil = Date.now() + 300
+          priority(pens.size > 0)
           if (ev.type !== 'pointerup') cancel()
         }
       }
@@ -24,6 +25,7 @@ export function installPenInput(parent: HTMLElement, canvas: HTMLCanvasElement, 
   function blur(): void {
     if (pens.size === 0) return
     pens.clear()
+    priority(false)
     blockedUntil = Date.now() + 300
     cancel()
   }

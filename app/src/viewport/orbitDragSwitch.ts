@@ -40,13 +40,18 @@
  */
 
 import type { Vector2, Vector3, Spherical } from 'three'
-import { MOUSE } from 'three'
+import { MOUSE, TOUCH } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 /** `_STATE` in OrbitControls.js (r185): the mouse drag states this module
  * cares about. Touch states (3–6) are never switched — a two-finger gesture
  * has no Shift key. */
 export const ORBIT_STATE = { NONE: -1, ROTATE: 0, DOLLY: 1, PAN: 2 } as const
+
+export function setPenPriority(controls: OrbitControls, active: boolean): void {
+  controls.touches.ONE = active ? null : TOUCH.ROTATE
+  if (active) stopInertia(controls)
+}
 
 /** The private surface, as a structural type — see the module doc. */
 interface OrbitControlsInternals {

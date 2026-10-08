@@ -1,8 +1,21 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import { installPenInput } from './penInput'
+import { PerspectiveCamera, TOUCH } from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { setPenPriority } from './orbitDragSwitch'
 
 afterEach(() => { vi.useRealTimers(); document.body.replaceChildren() })
+
+it('disables single-finger orbit during pen contact and restores it after release or cancel', () => {
+  const canvas = document.createElement('canvas')
+  const controls = new OrbitControls(new PerspectiveCamera(), canvas)
+  setPenPriority(controls, true)
+  expect(controls.touches.ONE).toBeNull()
+  setPenPriority(controls, false)
+  expect(controls.touches.ONE).toBe(TOUCH.ROTATE)
+  controls.dispose()
+})
 
 it('rejects palm events before canvas handlers, including contacts held past the 300ms cooldown', () => {
   vi.useFakeTimers()
