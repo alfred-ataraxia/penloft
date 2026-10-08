@@ -135,15 +135,21 @@ test('pen rectangle, unit keypad, push/pull, touch navigation, history and STL',
   navigation.twistDegrees = twistAngle
   expect(Math.abs(Math.abs(twistAngle) - 30)).toBeLessThanOrEqual(5)
   const distance = (c: typeof beforeTwist) => Math.hypot(...c.position.map((x, i) => x - c.target[i]))
+  const pinchStarted = Date.now()
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 450, y: 420, id: 4 }, { x: 650, y: 420, id: 5 }] })
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 400, y: 420, id: 4 }, { x: 700, y: 420, id: 5 }] })
+  navigation.pinchStartMs = Date.now() - pinchStarted
+  expect(navigation.pinchStartMs as number).toBeLessThan(1000)
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
   await page.waitForTimeout(500)
   const afterPinch = await page.evaluate(() => window.__hew_test!.getCamera())
   expect(distance(afterPinch)).toBeLessThan(distance(afterTwist))
   navigation.pinchDistanceRatio = distance(afterPinch) / distance(afterTwist)
+  const panStarted = Date.now()
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 450, y: 420, id: 6 }, { x: 650, y: 420, id: 7 }] })
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 490, y: 450, id: 6 }, { x: 690, y: 450, id: 7 }] })
+  navigation.panStartMs = Date.now() - panStarted
+  expect(navigation.panStartMs as number).toBeLessThan(1000)
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] })
   await page.waitForTimeout(500)
   const afterPan = await page.evaluate(() => window.__hew_test!.getCamera())
