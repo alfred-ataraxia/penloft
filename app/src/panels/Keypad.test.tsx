@@ -12,7 +12,7 @@ it('feeds the existing unit-aware VCB without focusing a native text input', () 
   }} />)
   fireEvent.click(screen.getByRole('button', { name: 'Measurements' }))
   for (const key of ['2', 'm', 'Enter', '3', '0', '0', '0', 'mm', 'Enter']) {
-    const button = screen.getByRole('button', { name: key, exact: true })
+    const button = screen.getByRole('button', { name: key })
     expect(button.style.minHeight).toBe('52px')
     expect(button.style.minWidth).toBe('52px')
     fireEvent.click(button)
