@@ -92,6 +92,7 @@ import {
 } from './math'
 import { dynamicClipPlanes, groundHitIsUsable, targetAtDepth, zoomFloorFor } from './cameraDepth'
 import { CameraRig, type Projection, isBehindCamera } from './cameraRig'
+import { installPenInput } from './penInput'
 import { fovReadoutText, activeCameraToolForName } from './fovReadout'
 import { parseFovEntry } from './fovUnits'
 import {
@@ -9543,6 +9544,10 @@ export default function Viewport({
     // phase on `el` (the canvas's PARENT, not the canvas itself — see
     // onFovDragPointerDownCapture's doc for why registering on the canvas
     // wouldn't run early enough to beat OrbitControls' own listener).
+    const disposePenInput = installPenInput(el, renderer.domElement, () => {
+      toolController.activeTool.cancel()
+      scheduleRender()
+    })
     el.addEventListener('pointerdown', onFovDragPointerDownCapture, true)
     el.addEventListener('wheel', onFovWheelCapture, { capture: true, passive: false })
     // Pivot-at-cursor-depth (cameraDepth.ts): capture phase so these run
@@ -9584,6 +9589,7 @@ export default function Viewport({
     // ------------------------------------------------------------------ cleanup
     return () => {
       renderScheduler.cancel()
+      disposePenInput()
       document.removeEventListener('visibilitychange', onVisibilityChange)
       // A Scene camera tween and its settle timer outlive nothing: cancel
       // both so no post-unmount frame or callback fires into a torn-down
