@@ -59,8 +59,8 @@ export default defineConfig(({ command }) => ({
       injectRegister: null,
 
       manifest: {
-        name: 'Hew',
-        short_name: 'Hew',
+        name: 'Penloft',
+        short_name: 'Penloft',
         description: 'A solids-first 3D modeler',
         // Brand "Charcoal" (Hew Brand Sheet v1) — the PWA splash / OS chrome color.
         theme_color: '#1b1a17',
