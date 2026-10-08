@@ -30,6 +30,7 @@ import { ChangesPanel } from './panels/ChangesPanel'
 import { UnsavedChangesDialog, type UnsavedChangesDecision } from './panels/UnsavedChangesDialog'
 import { parseHistoryEntries } from './panels/changesModel'
 import { ToolRail } from './panels/ToolRail'
+import { TouchRail } from './panels/TouchRail'
 import { TrayHideRow, TrayShowTab } from './panels/TrayToggle'
 import { ContextualDock } from './panels/ContextualDock'
 import { nextSelection, mergeSelection, type SelectMode, canBoolean as canBooleanHelper, canBooleanInComponent, canMakeComponent, canPlaceInstance, canExplodeInstance, canMakeUnique, canGroup as canGroupHelper, canUngroup as canUngroupHelper, nodeEq, nodeKey, nodeKindToNumber, nodeRefFromJs, resolveLabel, entityLabel, buildTreeIndexMap, pruneDeadSelection, structuralSelection, type NodeRef } from './panels/treeModel'
@@ -302,6 +303,7 @@ export default function App() {
    * gets a status-bar chip rather than living only in the viewport. */
   const [precisionSnap, setPrecisionSnap] = useState(false)
   const [snapKind, setSnapKind] = useState<string | null>(null)
+  const touchMode = new URLSearchParams(window.location.search).get('touch') === '1' || isCoarsePointer()
   const [measurement, setMeasurement] = useState<string>('')
   /** True when `measurement` is a finished Tape Measure reading kept on
    *  screen for reference (tape-measure-rework part 1) rather than a live
@@ -5636,7 +5638,12 @@ export default function App() {
           over the native GTK menubar — trialed and rejected); the
           centered title is shown by TitleBar on Linux/Windows so it is
           hidden here in that case. */}
-      <MenuBar
+      {touchMode ? <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', background: 'var(--surface-bar)', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-hairline)' }}>
+        <strong>Penloft</strong><span>{activeTool}</span><span style={{ flex: 1, color: 'var(--text-faint)' }}>Draw with pen · Navigate with fingers</span>
+        <a href="https://github.com/alfred-ataraxia/penloft" target="_blank" rel="noreferrer" style={{ color: 'inherit' }}>Hew fork · AGPL source</a>
+        <button type="button" onClick={handleRedo} style={{ minWidth: 52, minHeight: 52 }}>Redo</button>
+        <button type="button" onClick={() => menuActionRef.current('file-export-stl')} style={{ minWidth: 52, minHeight: 52 }}>Export STL</button>
+      </header> : <MenuBar
         name={documentName(docSession)}
         saveState={saveStateLabel(docSession, nowTick)}
         nativeMenuBar={isTauri && isMac}
@@ -5765,7 +5772,7 @@ export default function App() {
         onEnterShopMode={!isTauri && isCoarsePointer() ? handleEnterShopMode : undefined}
         windowList={isTauri ? windowList : undefined}
         onFocusWindow={focusWindow}
-      />
+      />}
 
       {/* Kernel panic sticky banner */}
       {kernelPanicked && (
@@ -5809,7 +5816,7 @@ export default function App() {
           viewport, and the docked right tray (`06_docked_panels.md`)
           — the app-shell's full 3-column layout (`02_app_shell.md`). */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-        <ToolRail
+        {touchMode ? <TouchRail activeTool={activeTool} onSelectTool={activateTool} onUndo={handleUndo} /> : <ToolRail
           activeTool={activeTool}
           onSelectTool={(name) => activateTool(name)}
           // The resting palette field lives at the top of the rail on every
@@ -5827,7 +5834,7 @@ export default function App() {
           libraryOpen={showLibrary}
           narrow={railNarrow}
           onToggleNarrow={toggleRailNarrow}
-        />
+        />}
         <div
           style={{ flex: 1, minWidth: 0, position: 'relative' }}
           onDragOver={handleDragOver}
@@ -5838,7 +5845,7 @@ export default function App() {
           // of panel content. Clear it on the way out.
           onPointerLeave={() => setInferenceInfo(null)}
         >
-          {trayCollapsed && (
+          {!touchMode && trayCollapsed && (
             <TrayShowTab onClick={showTray} focusOnMount={trayToggleTakesFocus} />
           )}
           <Viewport
@@ -6006,7 +6013,7 @@ export default function App() {
               nothing is selected and the cursor is aimed at a sketch region
               — an explicit selection's dock always wins over this hint.
               View ▸ Contextual Dock turns it off entirely. */}
-          {!dockHidden && (
+          {!touchMode && !dockHidden && (
           <div style={{ display: 'contents' }} onPointerOver={() => setInferenceInfo(null)}>
             <ContextualDock
               selectedIds={selectedIds}
@@ -6104,7 +6111,7 @@ export default function App() {
         {/* Tray resize handle — drag to adjust the tray width; the width is
             clamped and persisted so complex models' tag/outliner labels can
             be given room once and keep it across launches. */}
-        {!trayCollapsed && (<>
+        {!touchMode && !trayCollapsed && (<>
         <div
           role="separator"
           aria-orientation="vertical"
@@ -6279,7 +6286,7 @@ export default function App() {
           fontFamily: 'var(--font-family-ui)',
           fontSize: 'var(--font-size-body, 12px)',
           borderTop: '1px solid var(--border-hairline)',
-          display: 'flex',
+          display: touchMode ? 'none' : 'flex',
           alignItems: 'center',
           gap: 'var(--space-3, 8px)',
           flexShrink: 0,
